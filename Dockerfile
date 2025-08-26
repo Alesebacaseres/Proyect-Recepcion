@@ -1,5 +1,5 @@
 # Usa una imagen oficial ligera de Node.js (LTS)
-FROM node:18-slim AS builder
+FROM node:18-slim
 
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /usr/src/app
@@ -15,6 +15,10 @@ COPY . .
 
 # Expone el puerto que Cloud Run espera (8080)
 EXPOSE 8080
+
+# Variables necesarias para que escuche correctamente
+ENV PORT=8080
+ENV HOST=0.0.0.0
 
 # Comando por defecto para iniciar la app
 CMD ["npm", "start"]
