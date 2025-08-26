@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Control de Pallets</title>
+<style>
+:root{
+ --bg:#0f172a;
+ --panel:#111827;
+ --muted:#94a3b8;
+ --text:#e5e7eb;
+ --accent:#22c55e;
+ --warn:#f59e0b;
+ --danger:#ef4444;
+ --card:#1f2937;
+ --input:#0b1220;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#0b1020, #0f172a);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica Neue,Arial,Noto Sans}
+.wrap{max-width:1400px;margin:24px auto;padding:16px}
+h1{font-size:clamp(22px,3vw,32px);margin:0 0 12px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+.grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr .8fr}
+@media (max-width:1200px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button{border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--input);color:var(--text);padding:12px 14px;font-size:16px}
+input,select{flex:1;min-width:160px}
+button{cursor:pointer;transition:.2s transform,.2s opacity}
+button:hover{transform:translateY(-1px)}
+button:disabled{opacity:0.5;cursor:not-allowed}
+.primary{background:linear-gradient(90deg,#16a34a,#22c55e);border:none;color:#04120a;font-weight:700}
+.ghost{background:transparent}
+.warn{background:linear-gradient(90deg,#eab308,#f59e0b);border:none;color:#2a1d04;font-weight:700}
+.muted{color:var(--muted)}
+.list{display:grid;gap:8px;max-height:420px;overflow:auto;padding-right:4px}
+.item{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:10px 12px;border-radius:12px}
+.badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#0b1220;border:1px solid rgba(255,255,255,.1);text-align:center;margin-left:6px}
+.empty{border:1px dashed rgba(255,255,255,.15);padding:20px;border-radius:12px;text-align:center}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.kpi .box{background:var(--panel);border:1px solid rgba(255,255,255,.06);padding:12px 14px;border-radius:14px;min-width:150px}
+.small{font-size:12px;color:var(--muted)}
+.search{width:100%}
+.divider{height:1px;background:rgba(255,255,255,.08);margin:12px 0}
+#discountInfo, #taskGenInfo{margin-top:8px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <h1>Control de pallets</h1>
+ <div class="kpi">
+  <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
+  <div class="box"><div class="small">Descontados</div><div id="kpiDone">0</div></div>
+  <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
+  <button id="btnClear" class="ghost" style="margin-left:auto;">🗑 Borrar datos</button>
+ </div>
+ <div class="grid">
+  <!-- Ventana 1: Ingreso -->
+  <section class="card">
+   <h3>Ingreso de pallet</h3>
+   <form id="formAdd" class="row" autocomplete="off">
+    <input id="cantidad" type="number" placeholder="Cantidad" min="1" required />
+    <select id="cliente" required>
+     <option value="" disabled selected>Comitente</option>
+     <option value="Novo">Novo</option>
+     <option value="Ferring">Ferring</option>
+     <option value="Poen">Poen</option>
+     <option value="Behring">Behring</option>
+    </select>
+    <!-- Campo para el usuario que realiza la acción -->
+    <input id="UsuarioIngreso" type="text" placeholder="Usuario" required  />
+    <button class="primary" type="submit">Cargar</button>
+   </form>
+   <div class="divider"></div>
+   <input class="search" id="searchPend" placeholder="Filtrar por comitente..." />
+   <div id="pendingList" class="list"></div>
+  </section>
+
+  <!-- Ventana 2: Generar tareas -->
+  <section class="card">
+   <h3>Generar tareas de descuento</h3>
+   <input class="search" id="searchDetail" placeholder="Filtrar por comitente..." />
+   <div id="detailList" class="list"></div>
+   
+   <div id="taskGenSection" style="display:none; margin-top:12px;">
+    <h4>Configurar tarea</h4>
+    <form id="formTaskGen" class="row" autocomplete="off">
+     <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
+     <input id="taskPasillo" placeholder="Pasillo" required />
+     <button class="primary" type="submit">Continuar</button>
+    </form>
+    <div class="small muted" id="taskGenInfo"></div>
+   </div>
+  </section>
+
+  <!-- Ventana 3: Descontar -->
+  <aside class="card">
+   <h3>Descontar pallets</h3>
+   <div id="taskList" class="list"></div>
+   <div id="discountSection" style="display:none;margin-top:12px;">
+    <h4>Descontar cantidad</h4>
+    <form id="formDiscount" class="row" autocomplete="off">
+     <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
+     <button class="primary" type="submit">Descontar</button>
+    </form>
+    <div class="small muted" id="discountInfo"></div>
+   </div>
+  </aside>
+ </div>
+</div>
+
+<!-- Plantillas para los elementos de la lista -->
+<template id="tplItem">
+ <div class="item">
+  <div>
+   <div class="client"></div>
+   <div class="small"><span class="cantidad"></span></div>
+  </div>
+  <div class="badge state"></div>
+ </div>
+</template>
+
+<template id="tplTask">
+ <div class="item">
+  <div>
+   <div class="client"></div>
+   <div class="small"><span class="cantidad"></span></div>
+  </div>
+  <button class="warn btnTask">Descontar</button>
+ </div>
+</template>
+
+<script>
+// Definimos la URL base de nuestra API backend
+const API_URL = 'http://localhost:3000/api';
+
+// Funciones de utilidad para seleccionar elementos del DOM
+const $ = (s, p = document) => p.querySelector(s);
+const $$ = (s, p = document) => p.querySelectorAll(s);
+
+// Estado local para la aplicación frontend
+let appState = {
+    pendingPallets: [],
+    tasks: [],
+    currentTaskToDiscount: null
+};
+
+// --- Funciones para interactuar con la API del backend ---
+
+// Obtiene los KPIs generales
+async function fetchStatus() {
+    try {
+        const response = await fetch(`${API_URL}/status`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        $('#kpiPend').textContent = data.pendientes;
+        $('#kpiDone').textContent = data.descargados;
+        $('#kpiLast').textContent = data.lastAction;
+    } catch (error) {
+        console.error('Error fetching status:', error);
+        alert('Error al cargar el estado general. Verifica la consola para detalles.');
+    }
+}
+
+// Obtiene la lista de pallets pendientes
+async function fetchPendientes(searchTerm = '') {
+    try {
+        const response = await fetch(`${API_URL}/pendientes?search=${encodeURIComponent(searchTerm)}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        appState.pendingPallets = await response.json();
+        renderPendientes();
+    } catch (error) {
+        console.error('Error fetching pending pallets:', error);
+        alert('Error al cargar pallets pendientes. Verifica la consola para detalles.');
+    }
+}
+
+// Envía la información de un nuevo pallet para ingresarlo
+async function addPallet(cantidad, cliente, UsuarioIngreso) {
+    try {
+        const response = await fetch(`${API_URL}/pendientes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cantidad, cliente, UsuarioIngreso })
+        });
+
+        if (response.ok) {
+            alert('Pallet ingresado exitosamente.');
+            $('#formAdd').reset();
+            fetchStatus();
+            fetchPendientes();
+        } else {
+            const errorData = await response.json();
+            alert(`Error al ingresar pallet: ${errorData.message || response.statusText || 'Error desconocido'}`);
+        }
+    } catch (error) {
+        console.error('Error adding pallet:', error);
+        alert('Error de conexión al intentar ingresar pallet.');
+    }
+}
+
+// Obtiene la lista de tareas de descuento pendientes
+async function fetchTasks() {
+    try {
+        const response = await fetch(`${API_URL}/tareas-descuento`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        appState.tasks = await response.json();
+        renderTasks();
+    } catch (error) {
+        console.error('Error fetching tasks:', error);
+        alert('Error al cargar tareas de descuento. Verifica la consola para detalles.');
+    }
+}
+
+// Envía la información para generar una nueva tarea de descuento
+async function generateTask(PalletEntradaID, cliente, cantidad, pasillo) {
+    try {
+        const response = await fetch(`${API_URL}/tareas-descuento`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ PalletEntradaID, cliente, cantidad, pasillo })
+        });
+        if (response.ok) {
+            alert('Tarea generada exitosamente.');
+            $('#formTaskGen').reset();
+            hideTaskGenSection();
+            fetchStatus();
+            fetchPendientes();
+            fetchTasks();
+        } else {
+            const errorData = await response.json();
+            alert(`Error al generar tarea: ${errorData.message || response.statusText || 'Error desconocido'}`);
+        }
+    } catch (error) {
+        console.error('Error generating task:', error);
+        alert('Error de conexión al intentar generar tarea.');
+    }
+}
+
+// Envía la cantidad de pallets a descontar para una tarea específica
+async function discountPallet(tareaId, cantidadADescontar) {
+    try {
+        const response = await fetch(`${API_URL}/descontar-pallet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tareaId, cantidadADescontar })
+        });
+        if (response.ok) {
+            alert('Pallets descontados exitosamente.');
+            $('#formDiscount').reset();
+            hideDiscountSection();
+            fetchStatus();
+            fetchPendientes();
+            fetchTasks();
+        } else {
+            const errorData = await response.json();
+            alert(`Error al descontar pallet: ${errorData.message || response.statusText || 'Error desconocido'}`);
+        }
+    } catch (error) {
+        console.error('Error discounting pallet:', error);
+        alert('Error de conexión al intentar descontar pallet.');
+    }
+}
+
+// Borra todos los datos de la aplicación
+async function clearAllData() {
+    if (!confirm('¿Estás seguro de que quieres borrar TODOS los datos de la aplicación? Esta acción no se puede deshacer.')) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/clear-all`, { method: 'DELETE' });
+        if (response.ok) {
+            alert('Todos los datos han sido borrados.');
+            appState = { pendingPallets: [], tasks: [], currentTaskToDiscount: null };
+            render();
+        } else {
+            const errorData = await response.json();
+            alert(`Error al borrar datos: ${errorData.message || response.statusText || 'Error desconocido'}`);
+        }
+    } catch (error) {
+        console.error('Error clearing data:', error);
+        alert('Error de conexión al intentar borrar datos.');
+    }
+}
+
+// --- Funciones de Renderizado ---
+
+// Renderiza la lista de pallets pendientes
+function renderPendientes() {
+    const term = $('#searchPend').value.trim().toLowerCase();
+    const list = $('#pendingList');
+    list.innerHTML = '';
+
+    const filteredData = appState.pendingPallets.filter(it =>
+        it.Cliente.toLowerCase().includes(term)
+    );
+
+    if (!filteredData.length) {
+        list.innerHTML = '<div class="empty">No hay pallets pendientes para generar tareas.</div>';
+        return;
+    }
+
+    filteredData.forEach(it => {
+        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
+        $('.client', itemNode).textContent = it.Cliente;
+        $('.cantidad', itemNode).textContent = `Disponible: ${it.DisponibleParaTareas}`;
+        $('.state', itemNode).textContent = `Ingresado: ${it.CantidadTotalIngresada}`;
+        
+        itemNode.dataset.palletEntradaId = it.PalletEntradaID;
+        itemNode.dataset.cliente = it.Cliente;
+        itemNode.dataset.disponible = it.DisponibleParaTareas;
+
+        const btnGenerar = document.createElement('button');
+        btnGenerar.textContent = "Generar tarea";
+        btnGenerar.className = "primary";
+        btnGenerar.addEventListener('click', () => {
+            showTaskGenSection(it);
+        });
+        itemNode.appendChild(btnGenerar);
+        list.appendChild(itemNode);
+    });
+}
+
+// Renderiza la lista de tareas de descuento pendientes
+function renderTasks() {
+    const list = $('#taskList');
+    list.innerHTML = '';
+
+    if (!appState.tasks.length) {
+        list.innerHTML = '<div class="empty">No hay tareas pendientes.</div>';
+        return;
+    }
+
+    appState.tasks.forEach(p => {
+        const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
+        $('.client', taskNode).textContent = `${p.Cliente} (Pasillo: ${p.Pasillo})`;
+        $('.cantidad', taskNode).textContent = `Pendiente: ${p.CantidadPendienteDescontar}`;
+
+        const btnTask = taskNode.querySelector('.btnTask');
+        btnTask.dataset.taskId = p.ID;
+        btnTask.dataset.cliente = p.Cliente;
+        btnTask.dataset.cantidadPendiente = p.CantidadPendienteDescontar;
+        btnTask.addEventListener('click', handleTaskButtonClick);
+
+        list.appendChild(taskNode);
+    });
+}
+
+// Muestra la sección para generar una tarea
+let currentPalletForTask = null;
+function showTaskGenSection(pallet) {
+    currentPalletForTask = pallet;
+    $('#detailList').style.display = 'none';
+    $('#taskGenSection').style.display = 'block';
+    $('#taskCantidad').max = pallet.DisponibleParaTareas;
+    $('#taskCantidad').value = pallet.DisponibleParaTareas;
+    $('#taskPasillo').value = '';
+    $('#taskGenInfo').textContent = `Disponible para esta tarea: ${pallet.DisponibleParaTareas}`;
+}
+
+// Oculta la sección de generar tarea
+function hideTaskGenSection() {
+    $('#taskGenSection').style.display = 'none';
+    $('#detailList').style.display = 'grid';
+    $('#formTaskGen').reset();
+    currentPalletForTask = null;
+}
+
+// Maneja el clic en el botón "Descontar" de una tarea
+function handleTaskButtonClick(event) {
+    const btn = event.target;
+    const taskId = btn.dataset.taskId;
+    const cantidadPendiente = parseInt(btn.dataset.cantidadPendiente);
+    const cliente = btn.dataset.cliente;
+
+    appState.currentTaskToDiscount = {
+        id: taskId,
+        cliente: cliente,
+        cantidadPendiente: cantidadPendiente
+    };
+
+    $('#discountSection').style.display = 'block';
+    $('#discountInfo').textContent = `Tarea: ${cliente}. Pendiente de descontar: ${cantidadPendiente} unidades.`;
+    $('#discountCantidad').max = cantidadPendiente;
+    $('#discountCantidad').value = cantidadPendiente;
+}
+
+// Oculta la sección de descuento
+function hideDiscountSection() {
+    $('#discountSection').style.display = 'none';
+    $('#formDiscount').reset();
+    appState.currentTaskToDiscount = null;
+}
+
+// Función principal de renderizado inicial y refresco
+function render() {
+    fetchStatus();
+    fetchPendientes($('#searchPend').value);
+    fetchTasks();
+}
+
+// --- Event Listeners ---
+
+// Formulario de Ingreso de Pallet
+$('#formAdd').addEventListener('submit', e => {
+    e.preventDefault();
+    const cantidadInput = $('#cantidad');
+    const clientSelect = $('#cliente');
+    // Capturamos el valor del campo de usuario visible
+    const usuarioIngresoInput = $('#UsuarioIngreso'); 
+
+    const cantidad = parseInt(cantidadInput.value.trim());
+    const cliente = clientSelect.value; // Valor del select (ej: "Novo")
+    const UsuarioIngreso = usuarioIngresoInput.value.trim();
+
+    // --- VALIDACIONES FRONTEND ---
+    // Log para depurar los datos capturados antes de enviar
+    console.log('Frontend: Datos capturados antes de validar y enviar:', { cantidad, cliente, UsuarioIngreso });
+
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('Por favor, ingresa una cantidad válida mayor a cero.');
+        cantidadInput.focus();
+        return;
+    }
+    if (!cliente) { // Si el cliente no fue seleccionado (el valor por defecto es "")
+        alert('Por favor, selecciona un comitente.');
+        clientSelect.focus();
+        return;
+    }
+    if (!UsuarioIngreso) { // Validar que el usuario no esté vacío o sea solo espacios
+        alert('El usuario de ingreso es requerido.');
+        usuarioIngresoInput.focus(); // Pone el foco en el campo de usuario
+        return;
+    }
+    
+    // Si las validaciones pasan, llamamos a la función para enviar a la API
+    addPallet(cantidad, cliente, UsuarioIngreso);
+});
+
+// Filtro de Pallets Pendientes
+$('#searchPend').addEventListener('input', () => {
+    fetchPendientes($('#searchPend').value);
+});
+
+// Filtro de Detalles (para generar tareas) - Reutiliza fetchPendientes
+$('#searchDetail').addEventListener('input', () => {
+    fetchPendientes($('#searchDetail').value);
+});
+
+// Formulario de Generación de Tarea
+$('#formTaskGen').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!currentPalletForTask) return;
+
+    const cantidad = parseInt($('#taskCantidad').value.trim());
+    const pasillo = $('#taskPasillo').value.trim();
+
+    // Validaciones para la tarea
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('Por favor, ingresa una cantidad válida mayor a cero.');
+        $('#taskCantidad').focus();
+        return;
+    }
+    if (!pasillo) {
+        alert('Por favor, ingresa un pasillo válido.');
+        $('#taskPasillo').focus();
+        return;
+    }
+
+    generateTask(currentPalletForTask.PalletEntradaID, currentPalletForTask.Cliente, cantidad, pasillo);
+});
+
+// Evento para el botón de descuento (manejado en renderTasks)
+
+// Formulario de Descuento
+$('#formDiscount').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!appState.currentTaskToDiscount) return;
+
+    const cantidadADescontar = parseInt($('#discountCantidad').value.trim());
+
+    // Validaciones para el descuento
+    if (isNaN(cantidadADescontar) || cantidadADescontar <= 0) {
+        alert('Por favor, ingresa una cantidad válida a descontar mayor a cero.');
+        $('#discountCantidad').focus();
+        return;
+    }
+
+    discountPallet(appState.currentTaskToDiscount.id, cantidadADescontar);
+});
+
+// Botón para borrar todos los datos
+$('#btnClear').addEventListener('click', clearAllData);
+
+// Inicialización: Cargar datos y renderizar al cargar la página
+render();
+</script>
+</body>
+</html>
