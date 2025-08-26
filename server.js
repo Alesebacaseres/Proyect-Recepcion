@@ -4,29 +4,32 @@ const sql = require('mssql');
 const cors = require('cors');
 
 const app = express();
-
-// --- Variables de entorno ---
 const port = process.env.PORT || 8080;
 const host = process.env.HOST || '0.0.0.0';
+
 const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASSWORD;
 const dbDatabase = process.env.DB_DATABASE;
-const dbHostEnv = process.env.DB_HOST; // Esto debe ser /cloudsql/PROJECT:REGION:INSTANCE si usás Cloud SQL
+const dbHostEnv = process.env.DB_HOST; // ej: /cloudsql/proyecto:region:instancia
 
-// --- Configuración de conexión a SQL Server ---
+// Configuración base de BD
 const dbConfig = {
   user: dbUser,
   password: dbPassword,
   database: dbDatabase,
-  server: 'localhost', // use localhost cuando usás socket
+  server: 'localhost',
   options: {
     encrypt: true,
-    trustServerCertificate: true
+    trustServerCertificate: true,
+    connectionTimeout: 30000, // 30 s
+    requestTimeout: 60000     // 60 s
   },
+  // Usar socket para Cloud SQL si está presente
   ...(dbHostEnv && dbHostEnv.startsWith('/cloudsql') && {
     socketPath: dbHostEnv
   })
 };
+
 
 app.use(cors());
 app.use(express.json());
