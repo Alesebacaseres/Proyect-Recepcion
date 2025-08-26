@@ -4,33 +4,43 @@ const sql = require('mssql');
 const cors = require('cors');
 
 const app = express();
+
+// --- Variables de entorno ---
 const port = process.env.PORT || 8080;
+const host = process.env.HOST || '0.0.0.0';
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASSWORD;
+const dbDatabase = process.env.DB_DATABASE;
+const dbHostEnv = process.env.DB_HOST; // Esto debe ser /cloudsql/PROJECT:REGION:INSTANCE si usás Cloud SQL
+
+// --- Configuración de conexión a SQL Server ---
+const dbConfig = {
+  user: dbUser,
+  password: dbPassword,
+  database: dbDatabase,
+  server: 'localhost', // use localhost cuando usás socket
+  options: {
+    encrypt: true,
+    trustServerCertificate: true
+  },
+  ...(dbHostEnv && dbHostEnv.startsWith('/cloudsql') && {
+    socketPath: dbHostEnv
+  })
+};
 
 app.use(cors());
 app.use(express.json());
 
-const dbConfig = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: 'localhost',
-    database: process.env.DB_DATABASE,
-    options: {
-        encrypt: true,
-        trustServerCertificate: true,
-    },
-    socketPath: process.env.DB_HOST // <- Ruta tipo /cloudsql/...
-};
-
-
 function formatDate(date) {
-    if (!date) return "–";
-    try {
-        return new Date(date).toLocaleString('es-ES');
-    } catch (e) {
-        console.error("Error al formatear fecha:", date, e);
-        return "Fecha inválida";
-    }
+  if (!date) return "–";
+  try {
+    return new Date(date).toLocaleString('es-ES');
+  } catch (e) {
+    console.error("Error al formatear fecha:", date, e);
+    return "Fecha inválida";
+  }
 }
+
 
 // --- RUTAS API ---
 // (No modificadas, siguen igual que en tu versión)
