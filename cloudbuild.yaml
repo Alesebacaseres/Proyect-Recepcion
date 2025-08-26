@@ -1,67 +1,48 @@
 # cloudbuild.yaml
 
-# Define variables de sustitución para facilitar la configuración y evitar errores.
-# Estas variables se rellenarán automáticamente por Cloud Build ($PROJECT_ID, $COMMIT_SHA)
-# o se definirán en la configuración del trigger o en la consola.
 substitutions:
-  _MY_PROJECT_ID: golden-tempest-469108-r4               # Tu ID de proyecto de Google Cloud
-  _MY_REGION: us-central1                                 # Región de Artifact Registry, Cloud Run y Cloud SQL
-  _MY_AR_REPO: control-pallets-repo                       # Nombre de tu repositorio en Artifact Registry
+  _MY_PROJECT_ID: golden-tempest-469108-r4                # ID de tu proyecto
+  _MY_REGION: us-central1                                 # Región (coincide con Cloud Run, AR, SQL)
+  _MY_AR_REPO: control-pallets-repo                       # Nombre del repo de Artifact Registry
   _MY_IMAGE_NAME: control-pallets                         # Nombre de tu imagen Docker
-  _MY_SERVICE_NAME: control-pallets-app                   # Nombre de tu servicio Cloud Run
-  _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db # Tu instancia Cloud SQL (project:region:instance)
+  _MY_SERVICE_NAME: control-pallets-app                   # Nombre del servicio Cloud Run
+  _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db # Tu instancia Cloud SQL
 
 steps:
-# Paso 1: Construir la imagen Docker
-# Utiliza la imagen base de Node.js y etiqueta la imagen para Artifact Registry.
+# Paso 1: Construcción de imagen Docker
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}', '.']
   id: 'Build Docker image'
-
-# Paso 2: Subir la imagen a Artifact Registry
-# Sube la imagen construida al repositorio de Artifact Registry.
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', '${_MY_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}']
-  id: 'Push Docker image'
-
-# Paso 3: Desplegar la imagen en Cloud Run
-# Utiliza gcloud para desplegar la nueva revisión del servicio Cloud Run.
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
   args:
-  - 'run'
-  - 'deploy'
-  - '${_MY_SERVICE_NAME}' # Nombre del servicio Cloud Run
-  # ¡La imagen DEBE ser la de Artifact Registry!
-  - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
-  - '--region=${_MY_REGION}' # Región de Cloud Run
-  - '--platform=managed'
-  - '--allow-unauthenticated' # Permite acceso público
+    - build
+    - '-t'
+    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+    - '.'
 
-  # --- Configuración de Cloud SQL y Variables de Entorno ---
-  # La conexión a Cloud SQL se gestiona mediante la integración directa en Cloud Run.
-  # NO necesitas especificar DB_SERVER ni DB_PORT aquí si usas la integración.
+# Paso 2: Push de imagen a Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Docker image'
+  args:
+    - push
+    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
 
-  # Enlace a la instancia de Cloud SQL (¡Reemplaza con tus datos EXACTOS!)
-  - '--add-cloudsql-instances=${_SQL_INSTANCE}'
-
-  # Variables de entorno necesarias para tu aplicación Node.js
-  # Estas se pasan directamente al contenedor.
-  - '--set-env-vars=DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepciom'
-  
-  # El puerto en el que tu aplicación Node.js espera escuchar.
-  # Cloud Run usa la variable de entorno PORT (probablemente 8080 si no se especifica).
-  # Tu server.js debe leer process.env.PORT. Si Cloud Run pasa 8080, funcionará.
-  # Si tu server.js falla si PORT no es 3000, ajústalo en server.js a process.env.PORT || 8080.
-  - '--port=8080' # Especificamos 8080 porque es el puerto que Cloud Run suele esperar por defecto.
-  
-  # Si tu Dockerfile no está en la raíz del repo, ajusta esta ruta.
-  - '--source=.'
+# Paso 3: Deploy a Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy to Cloud Run'
+  entrypoint: 'gcloud'
+  args:
+    - run
+    - deploy
+    - '${_MY_SERVICE_NAME}'
+    - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+    - '--region=${_MY_REGION}'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
+    - '--add-cloudsql-instances=${_SQL_INSTANCE}'
+    - '--set-env-vars=DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepcion'
+    - '--port=8080'
 
 images:
-# Lista de imágenes que se subirán o usarán.
-- '${_MY_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+- '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
 
 options:
   logging: CLOUD_LOGGING_ONLY
