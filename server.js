@@ -1,28 +1,28 @@
 // server.js
 require('dotenv').config(); // Para variables de entorno locales (.env)
 const express = require('express');
-//const sql = require('mssql');
-//const cors = require('cors');
+const sql = require('mssql');
+const cors = require('cors');
 const app = express();
 
 const port = process.env.PORT || 8080; // Usamos 8080 como fallback para Cloud Run
 
 // --- Configuración de Middleware ---
-//app.use(cors());
-//app.use(express.json());
+app.use(cors());
+app.use(express.json());
 
 // --- Configuración de la conexión a SQL Server ---
-//const dbConfig = {
-  //  user: process.env.DB_USER, // Esto debería ser 'sqlserver'
-   // password: process.env.DB_PASSWORD, // Esto debería ser 'Aventura54'
-   // server: process.env.DB_HOST,       // Lee el host de Cloud Run (ej: '127.0.0.1')
-    //database: process.env.DB_DATABASE, // Esto debería ser 'Recepciom'
-    //port: parseInt(process.env.DB_PORT || '1433'), // Lee el puerto de Cloud Run (o usa 1433 como fallback)
-    //options: {
-      //  encrypt: true, // Para conexiones seguras
-        //trustServerCertificate: true, // Necesario para el proxy de Cloud SQL, incluso si lo gestiona Cloud Run
-   // }
-//};
+const dbConfig = {
+    user: process.env.DB_USER, // Esto debería ser 'sqlserver'
+    password: process.env.DB_PASSWORD, // Esto debería ser 'Aventura54'
+    server: process.env.DB_HOST,       // Lee el host de Cloud Run (ej: '127.0.0.1')
+    database: process.env.DB_DATABASE, // Esto debería ser 'Recepciom'
+    port: parseInt(process.env.DB_PORT || '1433'), // Lee el puerto de Cloud Run (o usa 1433 como fallback)
+    options: {
+        encrypt: true, // Para conexiones seguras
+        trustServerCertificate: true, // Necesario para el proxy de Cloud SQL, incluso si lo gestiona Cloud Run
+    }
+};
 
 // Función auxiliar para formatear fechas
 function formatDate(date) {
@@ -444,8 +444,8 @@ async function startServer() {
 async function startServer() {
     try {
         // Conexión a la base de datos usando la configuración obtenida de las variables de entorno
-       // await sql.connect(dbConfig);
-       // console.log("Conexión a SQL Server establecida.");
+        await sql.connect(dbConfig);
+        console.log("Conexión a SQL Server establecida.");
 
         // ... (creación de tablas si aplica) ...
 
