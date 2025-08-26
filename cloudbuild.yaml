@@ -1,31 +1,26 @@
-# cloudbuild.yaml
-
 substitutions:
-  _MY_PROJECT_ID: golden-tempest-469108-r4                # ID de tu proyecto
-  _MY_REGION: us-central1                                 # Región (coincide con Cloud Run, AR, SQL)
-  _MY_AR_REPO: control-pallets-repo                       # Nombre del repo de Artifact Registry
-  _MY_IMAGE_NAME: control-pallets                         # Nombre de tu imagen Docker
-  _MY_SERVICE_NAME: control-pallets-app                   # Nombre del servicio Cloud Run
-  _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db # Tu instancia Cloud SQL
+  _MY_PROJECT_ID: golden-tempest-469108-r4
+  _MY_REGION: us-central1
+  _MY_AR_REPO: control-pallets-repo
+  _MY_IMAGE_NAME: control-pallets
+  _MY_SERVICE_NAME: control-pallets-app
+  _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db
 
 steps:
-# Paso 1: Construcción de imagen Docker
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Docker image'
   args:
     - build
     - '-t'
-    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
     - '.'
 
-# Paso 2: Push de imagen a Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Push Docker image'
   args:
     - push
-    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
 
-# Paso 3: Deploy a Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy to Cloud Run'
   entrypoint: 'gcloud'
@@ -33,7 +28,7 @@ steps:
     - run
     - deploy
     - '${_MY_SERVICE_NAME}'
-    - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+    - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
     - '--region=${_MY_REGION}'
     - '--platform=managed'
     - '--allow-unauthenticated'
@@ -42,7 +37,8 @@ steps:
     - '--port=8080'
 
 images:
-- '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${_COMMIT_SHA}'
+- '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
