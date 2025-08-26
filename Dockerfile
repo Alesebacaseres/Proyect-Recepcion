@@ -1,28 +1,20 @@
-# Usa una imagen base de Node.js oficial.
-# Elige una versión LTS recomendada (ej: 18-slim, 20-slim).
-# Si tu app usa features de Node 20+, usa 'node:20-slim'. Si no, 18-slim está bien.
-# He mantenido 18-slim ya que es una versión LTS común.
+# Usa una imagen oficial ligera de Node.js (LTS)
 FROM node:18-slim AS builder
 
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /usr/src/app
 
-# Copia los archivos de gestión de dependencias (package.json, package-lock.json)
+# Copia los archivos de gestión de dependencias
 COPY package*.json ./
 
-# Instala las dependencias del proyecto
-# Es buena práctica usar '--only=production' si no necesitas devDependencies en producción
+# Instala solo dependencias de producción
 RUN npm install --only=production
 
-# Copia el resto del código fuente de la aplicación al contenedor
+# Copia el resto de los archivos de tu aplicación
 COPY . .
 
-# Indica que la aplicación escucha en el puerto 8080.
-# Cloud Run asignará dinámicamente el puerto a través de la variable de entorno PORT.
-# Tu aplicación Node.js debe leer process.env.PORT.
+# Expone el puerto que Cloud Run espera (8080)
 EXPOSE 8080
 
-# Comando para iniciar la aplicación cuando el contenedor arranque.
-# Asegúrate de que 'npm start' ejecute 'node server.js' y que server.js
-# escuche en el puerto proporcionado por process.env.PORT.
-CMD [ "npm", "start" ]
+# Comando por defecto para iniciar la app
+CMD ["npm", "start"]
