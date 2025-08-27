@@ -431,9 +431,10 @@ async function startServer() {
         const createTablesRequest = new sql.Request();
         await createTablesRequest.query(createTablesQuery);
         console.log("Tablas verificadas/creadas.");
-
-        app.listen(port, () => {
-            console.log(`Servidor backend corriendo en http://localhost:${port}`);
+        
+        const host = process.env.HOST || '0.0.0.0';
+        app.listen(port, host, () => {
+             console.log(`Servidor backend corriendo en http://localhost:${port}`);
         });
 
     } catch (err) {
