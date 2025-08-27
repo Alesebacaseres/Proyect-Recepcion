@@ -1,44 +1,67 @@
+# cloudbuild.yaml
+
+# Define sustituciones que se usarán en los pasos.
+# Estas son variables que puedes personalizar.
 substitutions:
   _MY_PROJECT_ID: golden-tempest-469108-r4
   _MY_REGION: us-central1
   _MY_AR_REPO: control-pallets-repo
   _MY_IMAGE_NAME: control-pallets
   _MY_SERVICE_NAME: control-pallets-app
+  # Asegúrate de que esta instancia de Cloud SQL sea correcta para tu proyecto.
   _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db
 
+# Define los pasos que se ejecutarán en Cloud Build.
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build Docker image'
-  args:
-    - build
-    - '-t'
-    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
-    - '.'
+  # Paso 1: Construir la imagen de Docker.
+  # Usa la imagen de Cloud Builders para Docker.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Docker image'
+    # Ejecuta el comando 'docker build' en el directorio raíz del contexto (donde está el Dockerfile).
+    # Asegúrate de que tu Dockerfile esté en la raíz y que COPY . . sea correcto.
+    args:
+      - build
+      - '-t'
+      # Etiqueta la imagen con la región, ID del proyecto, repositorio de Artifact Registry, nombre de la imagen y el SHA del commit.
+      - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
+      - '.' # El '.' indica que el contexto de construcción es el directorio actual.
 
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Push Docker image'
-  args:
-    - push
-    - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
+  # Paso 2: Subir la imagen de Docker construida a Artifact Registry.
+  # Usa la imagen de Cloud Builders para Docker.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Docker image'
+    # Ejecuta el comando 'docker push' para subir la imagen etiquetada.
+    args:
+      - push
+      - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
 
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'Deploy to Cloud Run'
-  entrypoint: 'gcloud'
-  args:
-    - run
-    - deploy
-    - '${_MY_SERVICE_NAME}'
-    - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
-    - '--region=${_MY_REGION}'
-    - '--platform=managed'
-    - '--allow-unauthenticated'
-    - '--add-cloudsql-instances=${_SQL_INSTANCE}'
-    - '--set-env-vars=DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepcion'
-    - '--port=8080'
+  # Paso 3: Desplegar la imagen en Cloud Run.
+  # Usa la imagen de Google Cloud SDK que contiene la herramienta 'gcloud'.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy to Cloud Run'
+    # Establece 'gcloud' como el punto de entrada para el comando.
+    entrypoint: 'gcloud'
+    # Argumentos para el comando 'gcloud run deploy'.
+    args:
+      - run
+      - deploy
+      - '${_MY_SERVICE_NAME}' # Nombre del servicio en Cloud Run.
+      - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}' # Imagen a desplegar.
+      - '--region=${_MY_REGION}' # Región de Cloud Run.
+      - '--platform=managed' # Usa la plataforma gestionada de Cloud Run.
+      - '--allow-unauthenticated' # Permite el acceso público si es necesario. Elimina si quieres acceso restringido.
+      - '--add-cloudsql-instances=${_SQL_INSTANCE}' # Conecta a la instancia de Cloud SQL especificada.
+      # --- ¡CORRECCIÓN CLAVE AQUÍ! ---
+      # Establece las variables de entorno necesarias para tu aplicación.
+      # Asegúrate de que DB_SERVER incluya la IP correcta.
+      - '--set-env-vars=DB_SERVER=34.171.224.221,DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepcion'
+      - '--port=8080' # Indica a Cloud Run que tu contenedor escucha en el puerto 8080.
 
+# Lista de imágenes que se guardarán en Artifact Registry (opcional, pero buena práctica).
 images:
-- '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
+  - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
 
+# Opciones de construcción.
 options:
+  # Configura el logging para enviar solo a Cloud Logging.
   logging: CLOUD_LOGGING_ONLY
-
