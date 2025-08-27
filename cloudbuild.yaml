@@ -9,6 +9,7 @@ substitutions:
   _MY_IMAGE_NAME: control-pallets
   _MY_SERVICE_NAME: control-pallets-app
   # Asegúrate de que esta instancia de Cloud SQL sea correcta para tu proyecto.
+  # Si tu instancia de Cloud SQL tiene un nombre diferente, ajústalo aquí.
   _SQL_INSTANCE: golden-tempest-469108-r4:us-central1:recepcion-sql-db
 
 # Define los pasos que se ejecutarán en Cloud Build.
@@ -17,7 +18,7 @@ steps:
   # Usa la imagen de Cloud Builders para Docker.
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Build Docker image'
-    # Ejecuta el comando 'docker build' en el directorio raíz del contexto (donde está el Dockerfile).
+    # Ejecuta el comando 'docker build' en el directorio raíz del contexto.
     # Asegúrate de que tu Dockerfile esté en la raíz y que COPY . . sea correcto.
     args:
       - build
@@ -50,10 +51,10 @@ steps:
       - '--region=${_MY_REGION}' # Región de Cloud Run.
       - '--platform=managed' # Usa la plataforma gestionada de Cloud Run.
       - '--allow-unauthenticated' # Permite el acceso público si es necesario. Elimina si quieres acceso restringido.
-      - '--add-cloudsql-instances=${_SQL_INSTANCE}' # Conecta a la instancia de Cloud SQL especificada.
-      # --- ¡CORRECCIÓN CLAVE AQUÍ! ---
-      # Establece las variables de entorno necesarias para tu aplicación.
-      # Asegúrate de que DB_SERVER incluya la IP correcta.
+      # Conecta a la instancia de Cloud SQL especificada. Asegúrate de que el nombre de la instancia (_SQL_INSTANCE) es correcto.
+      - '--add-cloudsql-instances=${_SQL_INSTANCE}'
+      # --- VARIABLES DE ENTORNO PARA LA APLICACIÓN EN CLOUD RUN ---
+      # Asegúrate de que los nombres de las variables aquí coincidan EXACTAMENTE con lo que lees en server.js
       - '--set-env-vars=DB_SERVER=34.171.224.221,DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepcion'
       - '--port=8080' # Indica a Cloud Run que tu contenedor escucha en el puerto 8080.
 

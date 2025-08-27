@@ -1,26 +1,88 @@
-require('dotenv').config(); // Para variables de entorno locales (.env)
+// Importa los módulos necesarios
 const express = require('express');
-const sql = require('mssql');
-const cors = require('cors');
+const cors = require('cors'); // Si lo usas para permitir acceso desde el frontend
+const tedious = require('tedious'); // Librería para conectar a SQL Server
+const os = require('os'); // Para acceder a las variables de entorno
+
+// Inicializa la aplicación Express
 const app = express();
 
-const port = process.env.PORT || 8080;
-
+// Middleware para permitir CORS y parsear JSON
 app.use(cors());
 app.use(express.json());
 
+// --- Configuración de la Base de Datos ---
+// Lee las variables de entorno PASADAS POR CLOUD RUN.
+// LOS NOMBRES DE ESTAS VARIABLES DEBEN COINCIDIR EXACTAMENTE CON LOS QUE PASAS EN cloudbuild.yaml.
+const dbServer = process.env.DB_SERVER; // Nombre/IP del servidor SQL (debe ser '34.171.224.221')
+const dbUser = process.env.DB_USER;     // Nombre de usuario para la BD
+const dbPassword = process.env.DB_PASSWORD; // Contraseña para la BD
+const dbDatabase = process.env.DB_DATABASE; // Nombre de la base de datos
+
+// Lee el puerto en el que la aplicación debe escuchar.
+// Cloud Run lo proporciona a través de process.env.PORT.
+// Si no está disponible (ej: en desarrollo local), usa 8080 como fallback.
+const appPort = parseInt(process.env.PORT, 10) || 8080;
+
+// --- Verificación de Variables de Entorno Críticas ---
+// Es fundamental que estas variables estén presentes para que la aplicación funcione.
+if (!dbServer || !dbUser || !dbPassword || !dbDatabase) {
+    console.error("-------------------------------------------------------");
+    console.error("ERROR: Faltan variables de entorno críticas para la base de datos.");
+    console.error("Por favor, asegúrate de que DB_SERVER, DB_USER, DB_PASSWORD, y DB_DATABASE estén configuradas y sean correctas.");
+    console.error(`Valores recibidos: DB_SERVER=${dbServer}, DB_USER=${dbUser}, DB_PASSWORD=${dbPassword ? '******' : 'null'}, DB_DATABASE=${dbDatabase}`);
+    console.error("-------------------------------------------------------");
+    // Salir de la aplicación si faltan datos esenciales para la BD.
+    process.exit(1);
+}
+
+// --- Configuración para la librería 'tedious' (SQL Server) ---
 const dbConfig = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_HOST,
-    database: process.env.DB_DATABASE,
-    port: parseInt(process.env.DB_PORT || '8080'),
+    user: dbUser,
+    password: dbPassword,
+    server: dbServer, // Usa la variable correcta para el servidor (que es DB_SERVER)
     options: {
-        encrypt: true,
-        trustServerCertificate: true
+        database: dbDatabase, // Usa la variable correcta para la base de datos (que es DB_DATABASE)
+        port: 1433,           // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
+        // encrypt: true,      // Habilita si tu servidor SQL requiere SSL/TLS. Es una buena práctica para conexiones seguras.
+                              // Si tienes problemas de conexión, intenta comentar esta línea para probar sin SSL.
     }
 };
 
+// --- Lógica de Conexión a la Base de Datos ---
+// Creamos una función para manejar la conexión a la BD.
+// Es importante que esta función maneje errores y reconexiones si es necesario.
+let connection = null;
+
+function connectToDatabase() {
+    return new Promise((resolve, reject) => {
+        // Creamos una nueva instancia de conexión.
+        connection = new tedious.Connection(dbConfig);
+
+        // Manejamos el evento 'connect' para saber si la conexión fue exitosa.
+        connection.on('connect', function(err) {
+            if (err) {
+                console.error('ERROR al conectar a la base de datos:', err);
+                // Rechazamos la promesa si hubo un error al conectar.
+                reject(err);
+            } else {
+                console.log('Conectado a la base de datos.');
+                resolve(connection); // Resolvemos la promesa con la conexión establecida.
+            }
+        });
+
+        // Manejamos cualquier otro error que ocurra en la conexión.
+        connection.on('error', function(err) {
+            console.error('ERROR general en la conexión de la base de datos:', err);
+            // Es crucial manejar errores de conexión para evitar que la app se caiga sin control.
+            // Aquí podrías intentar reconectar, o si es un error grave, salir.
+            reject(err);
+        });
+
+        // Iniciamos el proceso de conexión a la base de datos.
+        connection.connect();
+    });
+}
 // Función auxiliar para formatear fechas
 function formatDate(date) {
     if (!date) return "–";
