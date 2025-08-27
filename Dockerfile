@@ -2,13 +2,13 @@
 FROM node:18-slim
 
 # Establece el directorio de trabajo dentro del contenedor
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copia los archivos de gestión de dependencias
 COPY package*.json ./
 
 # Instala solo dependencias de producción
-RUN npm install --only=production
+RUN npm install --only=production --ignore-scripts
 
 # Copia el resto de los archivos de tu aplicación
 COPY . .
@@ -16,9 +16,5 @@ COPY . .
 # Expone el puerto que Cloud Run espera (8080)
 EXPOSE 8080
 
-# Variables necesarias para que escuche correctamente
-ENV PORT=8080
-ENV HOST=0.0.0.0
-
 # Comando por defecto para iniciar la app
-CMD ["npm", "start"]
+CMD [ "node", "server.js" ]
