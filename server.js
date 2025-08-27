@@ -25,16 +25,37 @@ const dbDatabase = process.env.DB_DATABASE; // Nombre de la base de datos
 const appPort = parseInt(process.env.PORT, 10) || 8080;
 
 // --- Verificación de Variables de Entorno Críticas ---
-// Es fundamental que estas variables estén presentes para que la aplicación funcione.
-if (!dbServer || !dbUser || !dbPassword || !dbDatabase) {
-    console.error("-------------------------------------------------------");
-    console.error("ERROR: Faltan variables de entorno críticas para la base de datos.");
-    console.error("Por favor, asegúrate de que DB_SERVER, DB_USER, DB_PASSWORD, y DB_DATABASE estén configuradas y sean correctas.");
-    console.error(`Valores recibidos: DB_SERVER=${dbServer}, DB_USER=${dbUser}, DB_PASSWORD=${dbPassword ? '******' : 'null'}, DB_DATABASE=${dbDatabase}`);
-    console.error("-------------------------------------------------------");
-    // Salir de la aplicación si faltan datos esenciales para la BD.
+// Es fundamental que estas variables estén presentes y no sean cadenas vacías.
+console.log("--- Verificando variables de entorno ---");
+console.log(`DB_SERVER: '${process.env.DB_SERVER}'`);
+console.log(`DB_USER: '${process.env.DB_USER}'`);
+console.log(`DB_PASSWORD: '${process.env.DB_PASSWORD ? '******' : 'null'}'`);
+console.log(`DB_DATABASE: '${process.env.DB_DATABASE}'`);
+console.log(`PORT: '${process.env.PORT}'`);
+console.log("---------------------------------------");
+
+// Realizamos una validación más estricta para asegurarnos de que no sean cadenas vacías.
+if (!process.env.DB_SERVER || process.env.DB_SERVER.trim() === "") {
+    console.error("ERROR: La variable de entorno DB_SERVER está vacía o no definida.");
     process.exit(1);
 }
+if (!process.env.DB_USER || process.env.DB_USER.trim() === "") {
+    console.error("ERROR: La variable de entorno DB_USER está vacía o no definida.");
+    process.exit(1);
+}
+if (!process.env.DB_PASSWORD || process.env.DB_PASSWORD.trim() === "") {
+    console.error("ERROR: La variable de entorno DB_PASSWORD está vacía o no definida.");
+    process.exit(1);
+}
+if (!process.env.DB_DATABASE || process.env.DB_DATABASE.trim() === "") {
+    console.error("ERROR: La variable de entorno DB_DATABASE está vacía o no definida.");
+    process.exit(1);
+}
+if (isNaN(appPort) || appPort <= 0) {
+    console.error("ERROR: El puerto de la aplicación (PORT) no es un número válido.");
+    process.exit(1);
+}
+
 
 // --- Configuración para la librería 'tedious' (SQL Server) ---
 const dbConfig = {
