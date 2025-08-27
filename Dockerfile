@@ -10,9 +10,8 @@ COPY package*.json ./
 # Instala solo dependencias de producción
 RUN npm install --only=production --ignore-scripts
 
-# Copia el resto de los archivos de tu aplicación
-COPY . .
-
+# Copia el resto de los archivos de tu aplicación (desde la carpeta 'app')
+COPY app/ /app/
 # Expone el puerto que Cloud Run espera (8080)
 EXPOSE 8080
 
