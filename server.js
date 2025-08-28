@@ -3,23 +3,28 @@
 // Importa los módulos necesarios
 const express = require('express');
 const cors = require('cors');
-const sql = require('mssql'); // Importamos mssql
+const sql = require('mssql'); // Asegúrate de que mssql esté en package.json
+// const os = require('os'); // Ya no se usa directamente aquí
+
+// Inicializa la aplicación Express
+const app = express();
+
+// Middleware para permitir CORS y parsear JSON
+app.use(cors());
+app.use(express.json());
 
 // --- Configuración de la Base de Datos ---
-// Lee las variables de entorno PASADAS POR CLOUD RUN.
 const dbServer = process.env.DB_SERVER;
 const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASSWORD;
 const dbDatabase = process.env.DB_DATABASE;
-// Lee el puerto en el que la aplicación debe escuchar.
-const appPort = parseInt(process.env.PORT, 10) || 8080; // Usa el puerto de Cloud Run o 8080 por defecto.
+const appPort = parseInt(process.env.PORT, 10) || 8080;
 
 // --- Verificación de Variables de Entorno Críticas ---
-// Aseguramos que todas las variables necesarias para la conexión a la BD estén presentes.
 console.log("--- Verificando variables de entorno ---");
 console.log(`DB_SERVER: '${dbServer}'`);
 console.log(`DB_USER: '${dbUser}'`);
-console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`); // Ocultamos la contraseña
+console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`);
 console.log(`DB_DATABASE: '${dbDatabase}'`);
 console.log(`PORT: '${appPort}'`);
 console.log("---------------------------------------");
@@ -30,29 +35,30 @@ if (!dbPassword || dbPassword.trim() === "") { console.error("ERROR: DB_PASSWORD
 if (!dbDatabase || dbDatabase.trim() === "") { console.error("ERROR: DB_DATABASE vacío o no definido."); process.exit(1); }
 if (isNaN(appPort) || appPort <= 0) { console.error("ERROR: PORT inválido."); process.exit(1); }
 
-// --- Configuración para la librería 'mssql' (Pool) ---
+// --- Configuración para la librería 'mssql' ---
 const dbConfig = {
     user: dbUser,
     password: dbPassword,
     server: dbServer,
     database: dbDatabase,
     options: {
-        port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
-        encrypt: true, // Habilitar cifrado SSL/TLS. Si falla la conexión, prueba a comentarlo.
-        trustServerCertificate: true, // Importante si usas encrypt:true con IP pública o certificados autofirmados.
+        port: 1433,
+        encrypt: true,
+        trustServerCertificate: true,
     }
 };
 
 // --- Lógica de Conexión a la Base de Datos (usando Pool) ---
-let pool = null; // Usaremos un pool de conexiones con mssql para mejor gestión.
+let pool = null; // Usaremos un pool de conexiones con mssql.
 let isDbConnected = false;
 
 async function connectToDatabase() {
     try {
-        // Creamos un pool de conexiones. Es mejor tenerlo global para reutilizar conexiones.
+        // Creamos y conectamos un pool de conexiones.
         pool = await new sql.ConnectionPool(dbConfig).connect();
         console.log('Pool de conexión a SQL Server establecido.');
         isDbConnected = true;
+        // No es necesario devolver el pool explícitamente si se usa globalmente, pero es buena práctica.
         return pool;
     } catch (err) {
         console.error('ERROR al conectar a la base de datos (pool):', err);
@@ -66,10 +72,7 @@ function formatDate(date) {
     if (!date) return "–";
     try {
         if (date instanceof Date && !isNaN(date.getTime())) {
-            return date.toLocaleString('es-ES', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
+            return date.toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
         } else {
             console.error("Formato de fecha inválido recibido:", date);
             return "Fecha inválida";
@@ -101,15 +104,13 @@ app.get('/api/status', async (req, res) => {
         const totalDescargadosResult = await pool.request().query('SELECT SUM(CantidadDescontada) as TotalDescargados FROM PalletsDescontados');
         const totalDescargados = totalDescargadosResult.recordset[0]?.TotalDescargados || 0;
 
-        // Obtenemos el último ingreso
         const lastIngresoResult = await pool.request().query('SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC');
-        // Obtenemos el último descuento
         const lastDescuentoResult = await pool.request().query('SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento FROM PalletsDescontados PD JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID ORDER BY PD.FechaHoraDescuento DESC');
 
         let ultimaAccion = "–";
-        // Comprobamos si hay resultados y si las fechas son válidas
+        // Comprobamos si hay resultados y si las fechas son válidas.
         if (lastIngresoResult.recordsets && lastIngresoResult.recordsets.length > 0 && lastDescuentoResult.recordsets && lastDescuentoResult.recordsets.length > 0) {
-            const ingresoData = lastIngresoResult.recordsets[0][0];
+            const ingresoData = lastIngresoResult.recordsets[0][0]; // Acceder a la primera fila del primer resultado
             const descuentoData = lastDescuentoResult.recordsets[0][0];
 
             const fechaIngreso = new Date(ingresoData.FechaHoraIngreso);
@@ -163,8 +164,9 @@ app.get('/api/pendientes', async (req, res) => {
         `;
         // Usamos sql.NVarChar para compatibilidad con SQL Server y pasamos el parámetro.
         const params = [{ name: 'searchTerm', type: sql.NVarChar, value: `%${searchTerm}%` }];
-        const result = await pool.request() // Obtenemos el request del pool
-            .input('searchTerm', sql.NVarChar, `%${searchTerm}%`) // Añadimos el parámetro
+        // Usamos pool.request() para obtener un request y luego añadimos el parámetro.
+        const result = await pool.request()
+            .input('searchTerm', sql.NVarChar, `%${searchTerm}%`)
             .query(query);
 
         res.json(result.recordsets[0]); // mssql devuelve recordsets[0] para el primer resultado
@@ -188,7 +190,6 @@ app.post('/api/pendientes', async (req, res) => {
     if (!UsuarioIngreso || typeof UsuarioIngreso !== 'string' || UsuarioIngreso.trim() === "") { return res.status(400).json({ message: 'Usuario es requerido y debe ser válido.' }); }
 
     // --- INSERCIÓN EN LA BASE DE DATOS ---
-    // Usamos transacciones para asegurar la atomicidad de las operaciones.
     const transaction = new sql.Transaction(pool); // Obtenemos la transacción del pool
     try {
         await transaction.begin(); // Iniciamos la transacción
@@ -222,10 +223,10 @@ app.post('/api/tareas-descuento', async (req, res) => {
     const { PalletEntradaID, cliente, cantidad, pasillo } = req.body;
 
     if (!PalletEntradaID || !cliente || !cantidad || !pasillo) {
-        return res.status(400).json({ message: 'ID de pallet de entrada, cliente, cantidad y pasillo son requeridos' });
+        return res.status(400).json({ message: 'ID de pallet de entrada, cliente, cantidad y pasillo son requeridas' });
     }
 
-    const transaction = new sql.Transaction(pool); // Usamos sql.Transaction() del pool
+    const transaction = new sql.Transaction(pool); // Obtenemos la transacción del pool
     try {
         await transaction.begin();
 
@@ -308,13 +309,13 @@ app.get('/api/tareas-descuento', async (req, res) => {
             HAVING (TD.CantidadSolicitada - ISNULL(SUM(PD.CantidadDescontada), 0)) > 0
             ORDER BY TD.ID DESC
         `;
-        // Asegúrate de que los tipos de datos de los parámetros coincidan con los de tu base de datos.
-        const params = [{ name: 'searchTerm', type: sql.NVarChar, value: `%${searchTerm}%` }];
-        const result = await pool.request() // Obtenemos el request del pool
-            .input('searchTerm', sql.NVarChar, `%${searchTerm}%`) // Añadimos el parámetro
+        // Los parámetros para esta consulta necesitarán ser definidos según la variable 'searchTerm' si se usa.
+        const params = [{ name: 'searchTerm', type: sql.VarChar, value: `%${searchTerm}%` }]; // Usamos sql.VarChar como ejemplo
+        const result = await pool.request() // Usamos pool.request()
+            .input('searchTerm', sql.VarChar, `%${searchTerm}%`)
             .query(query);
 
-        res.json(result.recordsets[0]); // mssql devuelve recordsets[0] para el primer resultado
+        res.json(result.recordsets[0]);
     } catch (err) {
         console.error('Error al obtener tareas de descuento:', err);
         res.status(500).json({ message: 'Error al obtener tareas de descuento', error: err.message });
@@ -329,11 +330,10 @@ app.post('/api/descontar-pallet', async (req, res) => {
         return res.status(400).json({ message: 'ID de tarea y cantidad a descontar son requeridas' });
     }
 
-    const transaction = new sql.Transaction(pool); // Usamos sql.Transaction() del pool
+    const transaction = new sql.Transaction(pool); // Obtenemos la transacción del pool
     try {
-        await transaction.begin(); // Iniciamos la transacción
+        await transaction.begin();
 
-        // Primer request - obtener tarea
         const tareaResult = await transaction.request() // Usar request de la transacción
             .input('tareaId', sql.Int, tareaId)
             .query('SELECT * FROM TareasDescuento WHERE ID = @tareaId');
@@ -345,7 +345,6 @@ app.post('/api/descontar-pallet', async (req, res) => {
 
         const tarea = tareaResult.recordset[0];
 
-        // Segundo request - verificar descuento acumulado
         const descontadoTareaResult = await transaction.request() // Usando request de la transacción
             .input('tareaId', sql.Int, tareaId)
             .query('SELECT SUM(CantidadDescontada) as TotalDescontado FROM PalletsDescontados WHERE TareaDescuentoID = @tareaId');
@@ -358,7 +357,6 @@ app.post('/api/descontar-pallet', async (req, res) => {
             return res.status(400).json({ message: `Cantidad inválida. Pendiente en tarea: ${cantidadPendienteEnTarea}` });
         }
 
-        // Tercer request - insertar descuento
         const insertDescuentoResult = await transaction.request() // Usando request de la transacción
             .input('tareaId', sql.Int, tareaId)
             .input('cliente', sql.NVarChar, tarea.Cliente)
@@ -372,15 +370,13 @@ app.post('/api/descontar-pallet', async (req, res) => {
 
         const palletDescontadoId = insertDescuentoResult.recordset[0].Id;
 
-        // Cuarto request - marcar tarea como completada (si aplica)
         if (cantidadADescontar === cantidadPendienteEnTarea) {
             await transaction.request() // Usando request de la transacción
                 .input('tareaId', sql.Int, tareaId)
                 .query('UPDATE TareasDescuento SET Estado = \'Completada\' WHERE ID = @tareaId');
         }
 
-        // Quinto request - registrar movimiento
-        await transaction.request() // Usando request de la transacción
+        await transaction.request() // Usando request de la transacción para el movimiento
             .input('cliente', sql.NVarChar, tarea.Cliente)
             .input('cantidad', sql.Int, cantidadADescontar)
             .input('tareaId', sql.Int, tareaId)
@@ -396,7 +392,7 @@ app.post('/api/descontar-pallet', async (req, res) => {
         res.json({ message: 'Pallet descontado con éxito', id: palletDescontadoId });
 
     } catch (err) {
-        console.error('Error al descontar pallet:', err);
+        console.e('Error al descontar pallet:', err);
         if (transaction) await transaction.rollback();
         res.status(500).json({ message: 'Error al descontar pallet', error: err.message });
     }
@@ -410,12 +406,9 @@ app.get('/', (req, res) => {
 // --- Inicio del servidor ---
 async function startServer() {
     try {
-        // Intentamos conectar usando el pool
-        pool = await connectToDatabase(); // Aseguramos que el pool esté conectado antes de iniciar el servidor
+        pool = await connectToDatabase(); // Esperamos a que el pool esté conectado
 
         // --- Creación de tablas si no existen ---
-        // Esto es útil para el desarrollo inicial o para asegurar que el esquema esté presente.
-        // En entornos de producción, es mejor tener las migraciones de esquema separadas.
         const createTablesQuery = `
             IF OBJECT_ID('dbo.PalletsEntrada', 'U') IS NULL CREATE TABLE dbo.PalletsEntrada (
                 ID INT PRIMARY KEY IDENTITY(1,1), Cliente VARCHAR(50) NOT NULL, Cantidad INT NOT NULL, FechaHoraIngreso DATETIME NOT NULL DEFAULT GETDATE(), UsuarioIngreso VARCHAR(50) NULL
@@ -433,20 +426,19 @@ async function startServer() {
                 ID INT PRIMARY KEY IDENTITY(1,1), TipoMovimiento VARCHAR(20) NOT NULL, PalletEntradaID INT NULL, TareaDescuentoID INT NULL, PalletsDescontadosID INT NULL, Cliente VARCHAR(50) NOT NULL, Cantidad INT NOT NULL, Pasillo VARCHAR(50) NULL, FechaHora DATETIME NOT NULL DEFAULT GETDATE(), Usuario VARCHAR(50) NULL
             );
         `;
-        const createTablesRequest = pool.request(); // Obtenemos el request del pool
-        await createTablesRequest.query(createTablesQuery);
-        console.Dlog("Tablas verificadas/creadas exitosamente.");
+        // Usamos pool.request() para ejecutar la creación de tablas
+        await pool.request().query(createTablesQuery);
+        console.log("Tablas verificadas/creadas exitosamente.");
 
-        // Inicia el servidor web solo después de que la conexión a la BD sea exitosa
+        // Inicia el servidor web solo después de que todo esté listo
         app.listen(appPort, () => {
-            console.log(`Servidor web escuchando en el puerto ${appPort}`);
+            console.Tlog(`Servidor web escuchando en el puerto ${appPort}`);
         });
 
     } catch (err) {
-        console.error("ERROR FATAL al iniciar el servidor o conectar a la DB:", err);
+        console.error("ERROR FATAL al iniciar el servidor:", err);
         process.exit(1); // Termina la aplicación si hay un error crítico al inicio
     }
 }
 
-// Llama a startServer para iniciar todo el proceso
 startServer();
