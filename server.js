@@ -51,17 +51,22 @@ if (isNaN(appPort) || appPort <= 0) {
     process.exit(1);
 }
 
-// --- Configuración para la librería 'tedious' ---
 const dbConfig = {
-    user: dbUser,
-    password: dbPassword,
     server: dbServer,
+    authentication: {
+        type: 'default', // o 'azure-active-directory-password' si usas AAD
+        options: {
+            userName: dbUser, // ¡Aquí debe estar el nombre de usuario!
+            password: dbPassword
+        }
+    },
     options: {
         database: dbDatabase,
-        port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
+        port: 1433,
        encrypt: true,
         trustServerCertificate: true,
     }
+    
 };
 
 // --- Lógica de Conexión a la Base de Datos ---
