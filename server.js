@@ -432,7 +432,7 @@ async function startServer() {
 
         // Inicia el servidor web solo después de que todo esté listo
         app.listen(appPort, () => {
-            console.Tlog(`Servidor web escuchando en el puerto ${appPort}`);
+            console.log(`Servidor web escuchando en el puerto ${appPort}`);
         });
 
     } catch (err) {
