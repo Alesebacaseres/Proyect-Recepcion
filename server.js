@@ -1,8 +1,7 @@
 // Importa los módulos necesarios
 const express = require('express');
 const cors = require('cors');
-const tedious = require('tedious'); // Asegúrate de que 'tedious' esté en tu package.json
-// const os = require('os'); // Ya no se usa directamente aquí
+const tedious = require('tedious'); // Asegúrate de tener esta librería instalada
 
 // Inicializa la aplicación Express
 const app = express();
@@ -12,13 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 // --- Configuración de la Base de Datos ---
-// Lee las variables de entorno PASADAS POR CLOUD RUN.
 const dbServer = process.env.DB_SERVER;
 const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASSWORD;
 const dbDatabase = process.env.DB_DATABASE;
-
-// Lee el puerto en el que la aplicación debe escuchar.
 const appPort = parseInt(process.env.PORT, 10) || 8080;
 
 // --- Verificación de Variables de Entorno Críticas ---
@@ -30,32 +26,17 @@ console.log(`DB_DATABASE: '${dbDatabase}'`);
 console.log(`PORT: '${appPort}'`);
 console.log("---------------------------------------");
 
-if (!dbServer || dbServer.trim() === "") {
-    console.error("ERROR: La variable de entorno DB_SERVER está vacía o no definida.");
-    process.exit(1);
-}
-if (!dbUser || dbUser.trim() === "") {
-    console.error("ERROR: La variable de entorno DB_USER está vacía o no definida.");
-    process.exit(1);
-}
-if (!dbPassword || dbPassword.trim() === "") {
-    console.error("ERROR: La variable de entorno DB_PASSWORD está vacía o no definida.");
-    process.exit(1);
-}
-if (!dbDatabase || dbDatabase.trim() === "") {
-    console.error("ERROR: La variable de entorno DB_DATABASE está vacía o no definida.");
-    process.exit(1);
-}
-if (isNaN(appPort) || appPort <= 0) {
-    console.error("ERROR: El puerto de la aplicación (PORT) no es un número válido.");
-    process.exit(1);
-}
+if (!dbServer || dbServer.trim() === "") { console.error("ERROR: DB_SERVER vacío o no definido."); process.exit(1); }
+if (!dbUser || dbUser.trim() === "") { console.error("ERROR: DB_USER vacío o no definido."); process.exit(1); }
+if (!dbPassword || dbPassword.trim() === "") { console.error("ERROR: DB_PASSWORD vacío o no definido."); process.exit(1); }
+if (!dbDatabase || dbDatabase.trim() === "") { console.error("ERROR: DB_DATABASE vacío o no definido."); process.exit(1); }
+if (isNaN(appPort) || appPort <= 0) { console.error("ERROR: PORT inválido."); process.exit(1); }
 
 // --- Configuración para la librería 'tedious' ---
 const dbConfig = {
     server: dbServer,
     authentication: {
-        type: 'default', // Para usar el login/password de SQL Server
+        type: 'default',
         options: {
             userName: dbUser,
             password: dbPassword
@@ -63,15 +44,14 @@ const dbConfig = {
     },
     options: {
         database: dbDatabase,
-        port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
-        encrypt: true,     // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
+        port: 1433,
+        encrypt: true, // Descomenta si es necesario
         trustServerCertificate: true,
-    
     }
 };
 
 // --- Lógica de Conexión a la Base de Datos ---
-let connection = null; // Mantener la conexión global
+let connection = null;
 let isDbConnected = false;
 
 function connectToDatabase() {
@@ -94,7 +74,7 @@ function connectToDatabase() {
             connection.on('error', function(err) {
                 console.error('ERROR general en la conexión de la base de datos:', err);
                 isDbConnected = false;
-                process.exit(1); // Salimos si hay un error crítico en la conexión
+                process.exit(1); // Salir si hay un error crítico en la conexión
             });
 
             console.log("Intentando conectar a la base de datos con config:", { server: dbServer, user: dbUser, database: dbDatabase, port: dbConfig.options.port });
@@ -112,10 +92,7 @@ function formatDate(date) {
     if (!date) return "–";
     try {
         if (date instanceof Date && !isNaN(date.getTime())) {
-            return date.toLocaleString('es-ES', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
+            return date.toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
         } else {
             console.error("Formato de fecha inválido recibido:", date);
             return "Fecha inválida";
@@ -127,6 +104,7 @@ function formatDate(date) {
 }
 
 // --- Función para ejecutar consultas genéricas ---
+// Esta función ahora usa la forma estándar de tedious para ejecutar SQL.
 async function executeQuery(query, params) {
     if (!connection || !isDbConnected) {
         throw new Error("No hay conexión activa a la base de datos.");
@@ -160,6 +138,7 @@ async function executeQuery(query, params) {
 // Ruta para obtener el estado general (KPIs)
 app.get('/api/status', async (req, res) => {
     try {
+        // Usamos la función executeQuery para las consultas
         const totalPendientesResult = await executeQuery(`
             SELECT
                 (SELECT ISNULL(SUM(Cantidad), 0) FROM PalletsEntrada)
@@ -172,6 +151,7 @@ app.get('/api/status', async (req, res) => {
         const totalDescargadosResult = await executeQuery('SELECT SUM(CantidadDescontada) as TotalDescargados FROM PalletsDescontados');
         const totalDescargados = totalDescargadosResult.rows[0]?.TotalDescargados || 0;
 
+        // Obtener el último ingreso y descuento
         const lastIngresoQuery = 'SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC';
         const lastIngresoResult = await executeQuery(lastIngresoQuery);
 
@@ -183,6 +163,7 @@ app.get('/api/status', async (req, res) => {
             const ingresoData = lastIngresoResult.rows[0];
             const descuentoData = lastDescuentoResult.rows[0];
 
+            // Asegurarse de que las fechas sean objetos Date válidos antes de comparar o formatear
             const fechaIngreso = new Date(ingresoData.FechaHoraIngreso);
             const fechaDescuento = new Date(descuentoData.FechaHoraDescuento);
 
@@ -209,7 +190,7 @@ app.get('/api/status', async (req, res) => {
             lastAction: ultimaAccion
         });
     } catch (err) {
-        console.error('Error al obtener status:', err);
+        console.error('Error en la ruta /api/status:', err);
         res.status(500).json({ message: 'Error al obtener status', error: err.message });
     }
 });
@@ -478,7 +459,6 @@ app.post('/api/descontar-pallet', async (req, res) => {
 });
 
 // --- Servir el frontend ---
-// Asegúrate de que 'index.html' esté en la raíz del proyecto junto a server.js
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
@@ -489,8 +469,9 @@ async function startServer() {
         await connectToDatabase(); // Intenta conectar a la base de datos primero
 
         // --- Creación de tablas si no existen ---
-        // Esto es útil para el desarrollo inicial o para asegurar que el esquema esté presente.
-        // En entornos de producción, es mejor tener las migraciones de esquema separadas.
+        // ¡CUIDADO! Ejecutar esto en producción podría ser problemático si las tablas ya existen y se intenta recrear.
+        // Es mejor asegurarse de que la migración de BD se maneje de otra forma (ej: herramientas de migración).
+        // Para pruebas, puede ser útil.
         const createTablesQuery = `
             IF OBJECT_ID('dbo.PalletsEntrada', 'U') IS NULL CREATE TABLE dbo.PalletsEntrada (
                 ID INT PRIMARY KEY IDENTITY(1,1), Cliente VARCHAR(50) NOT NULL, Cantidad INT NOT NULL, FechaHoraIngreso DATETIME NOT NULL DEFAULT GETDATE(), UsuarioIngreso VARCHAR(50) NULL
@@ -511,7 +492,7 @@ async function startServer() {
 
         const createTablesRequest = connection.request(); // Obteniendo request de la conexión
         await createTablesRequest.query(createTablesQuery);
-        console.en(`Tablas verificadas/creadas exitosamente.`);
+        console.log("Tablas verificadas/creadas exitosamente.");
 
         // Inicia el servidor web solo después de que la conexión a la BD sea exitosa y las tablas listas
         app.listen(appPort, () => {
