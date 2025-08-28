@@ -1,8 +1,8 @@
 // Importa los módulos necesarios
 const express = require('express');
-const cors = require('cors');
-const tedious = require('tedious');
-const os = require('os'); // Ya no lo usaremos directamente, pero lo dejamos si otros módulos lo necesitan.
+const cors = require('cors'); // Si lo usas para permitir acceso desde el frontend
+const tedious = require('tedious'); // Librería para conectar a SQL Server
+// const os = require('os'); // Ya no se usa directamente aquí, pero se mantiene si alguna otra parte lo necesitara
 
 // Inicializa la aplicación Express
 const app = express();
@@ -12,21 +12,22 @@ app.use(cors());
 app.use(express.json());
 
 // --- Configuración de la Base de Datos ---
-// Lee las variables de entorno directamente de process.env
+// Lee las variables de entorno PASADAS POR CLOUD RUN.
 const dbServer = process.env.DB_SERVER;
 const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASSWORD;
 const dbDatabase = process.env.DB_DATABASE;
+
+// Lee el puerto en el que la aplicación debe escuchar.
 const appPort = parseInt(process.env.PORT, 10) || 8080;
 
 // --- Verificación de Variables de Entorno Críticas ---
-// Realizamos una validación más estricta para asegurarnos de que no sean cadenas vacías.
 console.log("--- Verificando variables de entorno ---");
 console.log(`DB_SERVER: '${dbServer}'`);
 console.log(`DB_USER: '${dbUser}'`);
-console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`); // No mostramos la contraseña real
+console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`); // Ocultamos la contraseña por seguridad en logs
 console.log(`DB_DATABASE: '${dbDatabase}'`);
-console.log(`PORT: '${appPort}'`); // Usamos appPort porque ya lo parseamos
+console.log(`PORT: '${appPort}'`);
 console.log("---------------------------------------");
 
 if (!dbServer || dbServer.trim() === "") {
@@ -52,19 +53,18 @@ if (isNaN(appPort) || appPort <= 0) {
 
 // --- Configuración para la librería 'tedious' ---
 const dbConfig = {
-    server: dbServer, // El nombre del servidor (IP o hostname)
+    server: dbServer,
     authentication: {
         type: 'default', // Para usar el login/password de SQL Server
         options: {
-            userName: dbUser,     // <-- Aquí se usa la variable leída de process.env.DB_USER
-            password: dbPassword  // <-- Aquí se usa la variable leída de process.env.DB_PASSWORD
+            userName: dbUser,
+            password: dbPassword
         }
     },
     options: {
-        database: dbDatabase, // <-- Aquí se usa la variable leída de process.env.DB_DATABASE
-        port: 1433,           // Puerto estándar de SQL Server.
-        encrypt: true,
-        trustServerCertificate: true,     // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
+        database: dbDatabase,
+        port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
+        // encrypt: true, // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
     }
 };
 
@@ -75,7 +75,6 @@ let isDbConnected = false;
 function connectToDatabase() {
     return new Promise((resolve, reject) => {
         try {
-            // Creamos una nueva instancia de conexión con la configuración correcta
             connection = new tedious.Connection(dbConfig);
 
             connection.on('connect', function(err) {
@@ -93,10 +92,11 @@ function connectToDatabase() {
             connection.on('error', function(err) {
                 console.error('ERROR general en la conexión de la base de datos:', err);
                 isDbConnected = false;
-                process.exit(1); // Salimos si hay un error crítico en la conexión
+                // Si la conexión se pierde, es crítico para la app, así que salimos.
+                process.exit(1);
             });
 
-            console.log("Intentando conectar a la base de datos con config:", { server: dbServer, user: dbUser, database: dbDatabase, port: 1433 }); // Log para depurar config
+            console.log("Intentando conectar a la base de datos con config:", { server: dbServer, user: dbUser, database: dbDatabase, port: dbConfig.options.port }); // Log para depurar config
             connection.connect();
         } catch (err) {
             console.error('ERROR al crear la instancia de conexión:', err);
@@ -106,7 +106,7 @@ function connectToDatabase() {
     });
 }
 
-// Función auxiliar para formatear fechas (asegúrate de que sea usada y manejada correctamente)
+// --- Función Auxiliar ---
 function formatDate(date) {
     if (!date) return "–";
     try {
@@ -126,23 +126,25 @@ function formatDate(date) {
 }
 
 // --- Función para ejecutar consultas genéricas ---
+// Esta función encapsula la creación de un objeto Request y la ejecución de la query.
 async function executeQuery(query, params) {
     if (!connection || !isDbConnected) {
-        // Si la conexión no está lista, lanzamos un error
         throw new Error("No hay conexión activa a la base de datos.");
     }
 
     return new Promise((resolve, reject) => {
+        // Creamos un nuevo objeto Request para cada consulta.
         const request = new tedious.Request(query, (err, rowCount, rows) => {
             if (err) {
                 console.error('ERROR en la ejecución de la consulta:', err);
                 reject(err);
             } else {
+                // Resolvemos con los resultados de la consulta.
                 resolve({ rowCount, rows });
             }
         });
 
-        // Añadimos los parámetros a la consulta usando los tipos de tedious
+        // Añadimos los parámetros a la consulta usando los tipos de tedious.
         if (params) {
             for (const param of params) {
                 if (param.name && param.type !== undefined && param.value !== undefined) {
@@ -152,7 +154,9 @@ async function executeQuery(query, params) {
                 }
             }
         }
-        connection.execSql(request); // Ejecuta la consulta
+
+        // Ejecutamos la consulta usando la conexión establecida.
+        connection.execSql(request);
     });
 }
 
@@ -161,29 +165,32 @@ async function executeQuery(query, params) {
 // Ruta para obtener el estado general (KPIs)
 app.get('/api/status', async (req, res) => {
     try {
-        const pendientesResult = await executeQuery(`
+        const totalPendientesResult = await executeQuery(`
             SELECT
                 (SELECT ISNULL(SUM(Cantidad), 0) FROM PalletsEntrada)
                 -
                 (SELECT ISNULL(SUM(CantidadDescontada), 0) FROM PalletsDescontados)
                 AS TotalPendientesCalculado
         `);
-        const totalPendientes = pendientesResult.rows[0]?.TotalPendientesCalculado || 0;
+        const totalPendientes = totalPendientesResult.rows[0]?.TotalPendientesCalculado || 0;
 
-        const descargadosResult = await executeQuery('SELECT SUM(CantidadDescontada) as TotalDescargados FROM PalletsDescontados');
-        const totalDescargados = descargadosResult.rows[0]?.TotalDescargados || 0;
+        const totalDescargadosResult = await executeQuery('SELECT SUM(CantidadDescontada) as TotalDescargados FROM PalletsDescontados');
+        const totalDescargados = totalDescargadosResult.rows[0]?.TotalDescargados || 0;
 
-        // Para lastIngreso y lastDescuento, necesitarás asegurarte de que las fechas sean manejables por formatDate.
-        // El resultado de las queries de 'tedious' puede necesitar un procesamiento adicional para obtener objetos Date.
-        const lastIngresoResult = await executeQuery('SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC');
-        const lastDescuentoResult = await executeQuery('SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento FROM PalletsDescontados PD JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID ORDER BY PD.FechaHoraDescuento DESC');
+        // Obtener el último ingreso
+        const lastIngresoQuery = 'SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC';
+        const lastIngresoResult = await executeQuery(lastIngresoQuery);
+
+        // Obtener el último descuento
+        const lastDescuentoQuery = 'SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento FROM PalletsDescontados PD JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID ORDER BY PD.FechaHoraDescuento DESC';
+        const lastDescuentoResult = await executeQuery(lastDescuentoQuery);
 
         let ultimaAccion = "–";
         if (lastIngresoResult.rows.length > 0 && lastDescuentoResult.rows.length > 0) {
             const ingresoData = lastIngresoResult.rows[0];
             const descuentoData = lastDescuentoResult.rows[0];
 
-            // Asegurarse de que las fechas sean objetos Date o strings manejables por formatDate
+            // Asegurarse de que las fechas sean objetos Date válidos
             const fechaIngreso = new Date(ingresoData.FechaHoraIngreso);
             const fechaDescuento = new Date(descuentoData.FechaHoraDescuento);
 
@@ -196,7 +203,6 @@ app.get('/api/status', async (req, res) => {
             } else {
                  ultimaAccion = "Problema al procesar fechas de acción.";
             }
-
         } else if (lastIngresoResult.rows.length > 0) {
             const ingresoData = lastIngresoResult.rows[0];
             ultimaAccion = `Ingreso ${ingresoData.Cliente} (${ingresoData.Cantidad}) a las ${formatDate(ingresoData.FechaHoraIngreso)}`;
@@ -234,9 +240,9 @@ app.get('/api/pendientes', async (req, res) => {
             HAVING (PE.Cantidad - ISNULL(SUM(TD.CantidadSolicitada), 0)) > 0
             ORDER BY PE.ID DESC
         `;
-        // Asegúrate de que los tipos de datos de los parámetros coincidan con los de tu base de datos.
+        // Asegúrate de usar el tipo de dato correcto de 'tedious.TYPES'.
         const params = [{ name: 'searchTerm', type: tedious.TYPES.VarChar, value: `%${searchTerm}%` }];
-        const result = await executeQuery(query, params);
+        const result = await executeQuery(query, params); // Usando la función executeQuery
 
         res.json(result.rows);
     } catch (err) {
@@ -266,7 +272,13 @@ app.post('/api/pendientes', async (req, res) => {
 
     // --- INSERCIÓN EN LA BASE DE DATOS ---
     try {
-        const insertRequest = connection.request(); // Usamos la conexión global
+        // Para operaciones que modifican datos, es importante usar transacciones.
+        // Asumimos que 'connection' tiene un método 'transaction()' que retorna un objeto de transacción.
+        const transaction = connection.transaction();
+        await transaction.begin();
+
+        const insertRequest = transaction.request(); // Obtenemos el request de la transacción
+
         const insertResult = await insertRequest
             .input('cliente', tedious.TYPES.VarChar, cliente)
             .input('cantidad', tedious.TYPES.Int, cantidad)
@@ -277,12 +289,15 @@ app.post('/api/pendientes', async (req, res) => {
                 SELECT SCOPE_IDENTITY() AS Id;
             `);
 
+        await transaction.commit(); // Confirmamos la transacción
+
         const idInsertado = insertResult.recordset[0].Id;
         res.status(201).json({ message: 'Pallet insertado correctamente', id: idInsertado });
 
     } catch (error) {
         console.error('Error al insertar pallet:', error);
-        res.status(500).json({ message: 'Error al insertar el pallet en la base de datos.' });
+        if (transaction) await transaction.rollback(); // Deshacemos la transacción si hubo error
+        res.status(500).json({ message: 'Error al insertar el pallet en la base de datos.', error: error.message });
     }
 });
 
@@ -295,10 +310,11 @@ app.post('/api/tareas-descuento', async (req, res) => {
     }
 
     try {
-        // Comprobar disponibilidad y crear tarea/movimiento usando la conexión global
+        const transaction = connection.transaction(); // Obtenemos la transacción de la conexión
+        await transaction.begin(); // Iniciamos la transacción
 
         // PRIMER QUERY: Chequeo de disponibilidad
-        const checkRequest = connection.request(); // Usamos la conexión global
+        const checkRequest = transaction.request(); // Request dentro de la transacción
         const availableCheckResult = await checkRequest
             .input('PalletEntradaID', tedious.TYPES.Int, PalletEntradaID)
             .query(`
@@ -310,17 +326,19 @@ app.post('/api/tareas-descuento', async (req, res) => {
             `);
 
         if (availableCheckResult.recordset.length === 0) {
+            await transaction.rollback();
             return res.status(404).json({ message: 'Pallet de entrada no encontrado' });
         }
 
         const disponible = availableCheckResult.recordset[0].TotalIngresado - availableCheckResult.recordset[0].CantidadEnTareas;
 
         if (cantidad <= 0 || cantidad > disponible) {
+            await transaction.rollback();
             return res.status(400).json({ message: `Cantidad inválida. Disponible: ${disponible}` });
         }
 
         // SEGUNDO QUERY: Inserción de tarea
-        const insertTaskRequest = connection.request(); // Usamos la conexión global
+        const insertTaskRequest = transaction.request(); // Request dentro de la transacción
         const insertTaskResult = await insertTaskRequest
             .input('PalletEntradaID', tedious.TYPES.Int, PalletEntradaID)
             .input('cliente', tedious.TYPES.VarChar, cliente)
@@ -336,7 +354,7 @@ app.post('/api/tareas-descuento', async (req, res) => {
         const tareaId = insertTaskResult.recordset[0].Id;
 
         // TERCER QUERY: Movimiento
-        const movimientoRequest = connection.request(); // Usamos la conexión global
+        const movimientoRequest = transaction.request(); // Request dentro de la transacción
         await movimientoRequest
             .input('cliente', tedious.TYPES.VarChar, cliente)
             .input('cantidad', tedious.TYPES.Int, cantidad)
@@ -348,14 +366,12 @@ app.post('/api/tareas-descuento', async (req, res) => {
                 VALUES ('CREACION_TAREA', @tareaId, @cliente, @cantidad, @pasillo, GETDATE(), @usuario);
             `);
 
+        await transaction.commit(); // Confirmamos la transacción
         res.status(201).json({ message: 'Tarea de descuento generada con éxito', id: tareaId });
 
     } catch (err) {
         console.error('Error al generar tarea de descuento:', err);
-        // Si hay un error, hacemos rollback de la transacción si existe
-        if (connection && connection.rollback) {
-            await connection.rollback();
-        }
+        if (transaction) await transaction.rollback(); // Deshacemos la transacción si hubo error
         res.status(500).json({ message: 'Error al generar tarea de descuento', error: err.message });
     }
 });
@@ -364,8 +380,6 @@ app.post('/api/tareas-descuento', async (req, res) => {
 app.get('/api/tareas-descuento', async (req, res) => {
     const searchTerm = req.query.search || '';
     try {
-        const request = connection.request(); // Usamos la conexión global
-
         const query = `
             SELECT
                 TD.ID,
@@ -382,13 +396,8 @@ app.get('/api/tareas-descuento', async (req, res) => {
             ORDER BY TD.ID DESC
         `;
         // Los parámetros para esta consulta necesitarán ser definidos según la variable 'searchTerm' si se usa.
-        // Por ahora, asumimos que no hay parámetros para esta consulta específica.
-        // Si searchTerm se aplica a Cliente, necesitarías:
-        // const params = [{ name: 'searchTerm', type: tedious.TYPES.VarChar, value: `%${searchTerm}%` }];
-        // const result = await executeQuery(query, params); // Aquí 'executeQuery' necesitaría adaptarse para usar 'connection'
-
-        // Si usas 'request' directamente de la 'connection':
-        const result = await request.query(query);
+        const params = [{ name: 'searchTerm', type: tedious.TYPES.VarChar, value: `%${searchTerm}%` }];
+        const result = await executeQuery(query, params); // Usando la función executeQuery
 
         res.json(result.rows);
     } catch (err) {
@@ -406,13 +415,11 @@ app.post('/api/descontar-pallet', async (req, res) => {
     }
 
     try {
-        // Usar la conexión global y la forma correcta de obtener un request.
-        // Necesitas asegurarte de que las operaciones de base de datos estén dentro de una transacción.
-        const transaction = connection.transaction(); // Asumiendo que 'connection' tiene un método transaction()
-        await transaction.begin();
+        const transaction = connection.transaction(); // Obtener transacción de la conexión
+        await transaction.begin(); // Iniciar transacción
 
         // Primer request - obtener tarea
-        const tareaResult = await transaction.request() // Usando el request de la transacción
+        const tareaResult = await transaction.request() // Usar request de la transacción
             .input('tareaId', tedious.TYPES.Int, tareaId)
             .query('SELECT * FROM TareasDescuento WHERE ID = @tareaId');
 
@@ -424,7 +431,7 @@ app.post('/api/descontar-pallet', async (req, res) => {
         const tarea = tareaResult.recordset[0];
 
         // Segundo request - verificar descuento acumulado
-        const descontadoTareaResult = await transaction.request() // Usando el request de la transacción
+        const descontadoTareaResult = await transaction.request() // Usando request de la transacción
             .input('tareaId', tedious.TYPES.Int, tareaId)
             .query('SELECT SUM(CantidadDescontada) as TotalDescontado FROM PalletsDescontados WHERE TareaDescuentoID = @tareaId');
 
@@ -437,7 +444,7 @@ app.post('/api/descontar-pallet', async (req, res) => {
         }
 
         // Tercer request - insertar descuento
-        const insertDescuentoResult = await transaction.request() // Usando el request de la transacción
+        const insertDescuentoResult = await transaction.request() // Usando request de la transacción
             .input('tareaId', tedious.TYPES.Int, tareaId)
             .input('cliente', tedious.TYPES.VarChar, tarea.Cliente)
             .input('cantidadDescontada', tedious.TYPES.Int, cantidadADescontar)
@@ -452,13 +459,13 @@ app.post('/api/descontar-pallet', async (req, res) => {
 
         // Cuarto request - marcar tarea como completada (si aplica)
         if (cantidadADescontar === cantidadPendienteEnTarea) {
-            await transaction.request() // Usando el request de la transacción
+            await transaction.request() // Usando request de la transacción
                 .input('tareaId', tedious.TYPES.Int, tareaId)
                 .query('UPDATE TareasDescuento SET Estado = \'Completada\' WHERE ID = @tareaId');
         }
 
         // Quinto request - registrar movimiento
-        await transaction.request() // Usando el request de la transacción
+        await transaction.request() // Usando request de la transacción
             .input('cliente', tedious.TYPES.VarChar, tarea.Cliente)
             .input('cantidad', tedious.TYPES.Int, cantidadADescontar)
             .input('tareaId', tedious.TYPES.Int, tareaId)
@@ -470,18 +477,17 @@ app.post('/api/descontar-pallet', async (req, res) => {
                 VALUES ('DESCUENTO', @tareaId, @palletDescontadoId, @cliente, @cantidad, @pasillo, GETDATE(), @usuario);
             `);
 
-        await transaction.commit();
+        await transaction.commit(); // Confirmamos la transacción
         res.json({ message: 'Pallet descontado con éxito', id: palletDescontadoId });
 
     } catch (err) {
         console.error('Error al descontar pallet:', err);
-        if (transaction) await transaction.rollback();
+        if (transaction) await transaction.rollback(); // Deshacemos la transacción si hubo error
         res.status(500).json({ message: 'Error al descontar pallet', error: err.message });
     }
 });
 
 // --- Servir el frontend ---
-// Asegúrate de que 'index.html' esté en la raíz del proyecto junto a server.js
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
@@ -492,8 +498,6 @@ async function startServer() {
         await connectToDatabase(); // Intenta conectar a la base de datos primero
 
         // --- Creación de tablas si no existen ---
-        // Esto es útil para el desarrollo inicial o para asegurar que el esquema esté presente.
-        // En entornos de producción, es mejor tener las migraciones de esquema separadas.
         const createTablesQuery = `
             IF OBJECT_ID('dbo.PalletsEntrada', 'U') IS NULL CREATE TABLE dbo.PalletsEntrada (
                 ID INT PRIMARY KEY IDENTITY(1,1),
@@ -539,20 +543,18 @@ async function startServer() {
             );
         `;
 
-        // Ejecuta la creación de tablas usando la conexión global
         const createTablesRequest = connection.request(); // Obteniendo request de la conexión
         await createTablesRequest.query(createTablesQuery);
         console.log("Tablas verificadas/creadas exitosamente.");
 
-        // Inicia el servidor web solo después de que la conexión a la BD sea exitosa
+        // Inicia el servidor web solo después de que la conexión a la BD sea exitosa y las tablas listas
         app.listen(appPort, () => {
             console.log(`Servidor web escuchando en el puerto ${appPort}`);
         });
 
     } catch (err) {
-        // Si hay un error al conectar a la BD o al crear tablas, salimos.
         console.error("ERROR FATAL al iniciar el servidor o conectar a la DB:", err);
-        process.exit(1);
+        process.exit(1); // Termina la aplicación si hay un error crítico al inicio
     }
 }
 
