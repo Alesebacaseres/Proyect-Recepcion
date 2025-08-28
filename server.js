@@ -107,8 +107,8 @@ app.get('/api/status', async (req, res) => {
         const lastIngresoResult = await pool.request().query('SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC');
         const lastDescuentoResult = await pool.request().query('SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento FROM PalletsDescontados PD JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID ORDER BY PD.FechaHoraDescuento DESC');
 
-        let ultimaAccion = "–";
-        // Comprobamos si hay resultados y si las fechas son válidas.
+         let ultimaAccion = "–";
+        // Comprobamos si hay resultados y si las fechas son válidas
         if (lastIngresoResult.recordsets && lastIngresoResult.recordsets.length > 0 && lastDescuentoResult.recordsets && lastDescuentoResult.recordsets.length > 0) {
             const ingresoData = lastIngresoResult.recordsets[0][0]; // Acceder a la primera fila del primer resultado
             const descuentoData = lastDescuentoResult.recordsets[0][0];
@@ -132,7 +132,7 @@ app.get('/api/status', async (req, res) => {
             const descuentoData = lastDescuentoResult.recordsets[0][0];
             ultimaAccion = `Descontado ${descuentoData.CantidadDescontada} de ${descuentoData.Cliente} a las ${formatDate(descuentoData.FechaHoraDescuento)}`;
         }
-
+        
         res.json({
             pendientes: totalPendientes,
             descargados: totalDescargados,
