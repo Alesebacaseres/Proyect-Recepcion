@@ -63,7 +63,8 @@ const dbConfig = {
     options: {
         database: dbDatabase, // <-- Aquí se usa la variable leída de process.env.DB_DATABASE
         port: 1433,           // Puerto estándar de SQL Server.
-        // encrypt: true,      // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
+        encrypt: true,
+        trustServerCertificate: true,     // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
     }
 };
 
