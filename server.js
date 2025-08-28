@@ -1,8 +1,8 @@
 // Importa los módulos necesarios
 const express = require('express');
-const cors = require('cors'); // Si lo usas para permitir acceso desde el frontend
-const tedious = require('tedious'); // Librería para conectar a SQL Server
-// const os = require('os'); // Ya no se usa directamente aquí, pero se mantiene si alguna otra parte lo necesitara
+const cors = require('cors');
+const tedious = require('tedious'); // Asegúrate de que 'tedious' esté en tu package.json
+// const os = require('os'); // Ya no se usa directamente aquí
 
 // Inicializa la aplicación Express
 const app = express();
@@ -25,7 +25,7 @@ const appPort = parseInt(process.env.PORT, 10) || 8080;
 console.log("--- Verificando variables de entorno ---");
 console.log(`DB_SERVER: '${dbServer}'`);
 console.log(`DB_USER: '${dbUser}'`);
-console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`); // Ocultamos la contraseña por seguridad en logs
+console.log(`DB_PASSWORD: '${dbPassword ? '******' : 'null'}'`);
 console.log(`DB_DATABASE: '${dbDatabase}'`);
 console.log(`PORT: '${appPort}'`);
 console.log("---------------------------------------");
@@ -64,13 +64,12 @@ const dbConfig = {
     options: {
         database: dbDatabase,
         port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
-       encrypt: true,
-        trustServerCertificate: true, // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
+        // encrypt: true, // Descomenta si tu servidor requiere SSL/TLS. Prueba sin él primero si falla la conexión.
     }
 };
 
 // --- Lógica de Conexión a la Base de Datos ---
-let connection = null;
+let connection = null; // Mantener la conexión global
 let isDbConnected = false;
 
 function connectToDatabase() {
@@ -93,11 +92,10 @@ function connectToDatabase() {
             connection.on('error', function(err) {
                 console.error('ERROR general en la conexión de la base de datos:', err);
                 isDbConnected = false;
-                // Si la conexión se pierde, es crítico para la app, así que salimos.
-                process.exit(1);
+                process.exit(1); // Salimos si hay un error crítico en la conexión
             });
 
-            console.log("Intentando conectar a la base de datos con config:", { server: dbServer, user: dbUser, database: dbDatabase, port: dbConfig.options.port }); // Log para depurar config
+            console.log("Intentando conectar a la base de datos con config:", { server: dbServer, user: dbUser, database: dbDatabase, port: dbConfig.options.port });
             connection.connect();
         } catch (err) {
             console.error('ERROR al crear la instancia de conexión:', err);
@@ -127,25 +125,21 @@ function formatDate(date) {
 }
 
 // --- Función para ejecutar consultas genéricas ---
-// Esta función encapsula la creación de un objeto Request y la ejecución de la query.
 async function executeQuery(query, params) {
     if (!connection || !isDbConnected) {
         throw new Error("No hay conexión activa a la base de datos.");
     }
 
     return new Promise((resolve, reject) => {
-        // Creamos un nuevo objeto Request para cada consulta.
         const request = new tedious.Request(query, (err, rowCount, rows) => {
             if (err) {
                 console.error('ERROR en la ejecución de la consulta:', err);
                 reject(err);
             } else {
-                // Resolvemos con los resultados de la consulta.
                 resolve({ rowCount, rows });
             }
         });
 
-        // Añadimos los parámetros a la consulta usando los tipos de tedious.
         if (params) {
             for (const param of params) {
                 if (param.name && param.type !== undefined && param.value !== undefined) {
@@ -155,9 +149,7 @@ async function executeQuery(query, params) {
                 }
             }
         }
-
-        // Ejecutamos la consulta usando la conexión establecida.
-        connection.execSql(request);
+        connection.execSql(request); // Ejecuta la consulta
     });
 }
 
@@ -178,11 +170,9 @@ app.get('/api/status', async (req, res) => {
         const totalDescargadosResult = await executeQuery('SELECT SUM(CantidadDescontada) as TotalDescargados FROM PalletsDescontados');
         const totalDescargados = totalDescargadosResult.rows[0]?.TotalDescargados || 0;
 
-        // Obtener el último ingreso
         const lastIngresoQuery = 'SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso FROM PalletsEntrada ORDER BY FechaHoraIngreso DESC';
         const lastIngresoResult = await executeQuery(lastIngresoQuery);
 
-        // Obtener el último descuento
         const lastDescuentoQuery = 'SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento FROM PalletsDescontados PD JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID ORDER BY PD.FechaHoraDescuento DESC';
         const lastDescuentoResult = await executeQuery(lastDescuentoQuery);
 
@@ -191,7 +181,6 @@ app.get('/api/status', async (req, res) => {
             const ingresoData = lastIngresoResult.rows[0];
             const descuentoData = lastDescuentoResult.rows[0];
 
-            // Asegurarse de que las fechas sean objetos Date válidos
             const fechaIngreso = new Date(ingresoData.FechaHoraIngreso);
             const fechaDescuento = new Date(descuentoData.FechaHoraDescuento);
 
@@ -241,7 +230,6 @@ app.get('/api/pendientes', async (req, res) => {
             HAVING (PE.Cantidad - ISNULL(SUM(TD.CantidadSolicitada), 0)) > 0
             ORDER BY PE.ID DESC
         `;
-        // Asegúrate de usar el tipo de dato correcto de 'tedious.TYPES'.
         const params = [{ name: 'searchTerm', type: tedious.TYPES.VarChar, value: `%${searchTerm}%` }];
         const result = await executeQuery(query, params); // Usando la función executeQuery
 
@@ -274,9 +262,9 @@ app.post('/api/pendientes', async (req, res) => {
     // --- INSERCIÓN EN LA BASE DE DATOS ---
     try {
         // Para operaciones que modifican datos, es importante usar transacciones.
-        // Asumimos que 'connection' tiene un método 'transaction()' que retorna un objeto de transacción.
+        // Usamos connection.transaction() para obtener un objeto de transacción.
         const transaction = connection.transaction();
-        await transaction.begin();
+        await transaction.begin(); // Iniciamos la transacción
 
         const insertRequest = transaction.request(); // Obtenemos el request de la transacción
 
@@ -396,7 +384,6 @@ app.get('/api/tareas-descuento', async (req, res) => {
             HAVING (TD.CantidadSolicitada - ISNULL(SUM(PD.CantidadDescontada), 0)) > 0
             ORDER BY TD.ID DESC
         `;
-        // Los parámetros para esta consulta necesitarán ser definidos según la variable 'searchTerm' si se usa.
         const params = [{ name: 'searchTerm', type: tedious.TYPES.VarChar, value: `%${searchTerm}%` }];
         const result = await executeQuery(query, params); // Usando la función executeQuery
 
@@ -489,6 +476,7 @@ app.post('/api/descontar-pallet', async (req, res) => {
 });
 
 // --- Servir el frontend ---
+// Asegúrate de que 'index.html' esté en la raíz del proyecto junto a server.js
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
@@ -499,54 +487,29 @@ async function startServer() {
         await connectToDatabase(); // Intenta conectar a la base de datos primero
 
         // --- Creación de tablas si no existen ---
+        // Esto es útil para el desarrollo inicial o para asegurar que el esquema esté presente.
+        // En entornos de producción, es mejor tener las migraciones de esquema separadas.
         const createTablesQuery = `
             IF OBJECT_ID('dbo.PalletsEntrada', 'U') IS NULL CREATE TABLE dbo.PalletsEntrada (
-                ID INT PRIMARY KEY IDENTITY(1,1),
-                Cliente VARCHAR(50) NOT NULL,
-                Cantidad INT NOT NULL,
-                FechaHoraIngreso DATETIME NOT NULL DEFAULT GETDATE(),
-                UsuarioIngreso VARCHAR(50) NULL
+                ID INT PRIMARY KEY IDENTITY(1,1), Cliente VARCHAR(50) NOT NULL, Cantidad INT NOT NULL, FechaHoraIngreso DATETIME NOT NULL DEFAULT GETDATE(), UsuarioIngreso VARCHAR(50) NULL
             );
 
             IF OBJECT_ID('dbo.TareasDescuento', 'U') IS NULL CREATE TABLE dbo.TareasDescuento (
-                ID INT PRIMARY KEY IDENTITY(1,1),
-                PalletEntradaID INT NOT NULL,
-                Cliente VARCHAR(50) NOT NULL,
-                CantidadSolicitada INT NOT NULL,
-                Pasillo VARCHAR(50) NOT NULL,
-                FechaHoraCreacion DATETIME NOT NULL DEFAULT GETDATE(),
-                UsuarioCreacion VARCHAR(50) NULL,
-                Estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
-                FOREIGN KEY (PalletEntradaID) REFERENCES dbo.PalletsEntrada(ID)
+                ID INT PRIMARY KEY IDENTITY(1,1), PalletEntradaID INT NOT NULL, Cliente VARCHAR(50) NOT NULL, CantidadSolicitada INT NOT NULL, Pasillo VARCHAR(50) NOT NULL, FechaHoraCreacion DATETIME NOT NULL DEFAULT GETDATE(), UsuarioCreacion VARCHAR(50) NULL, Estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente', FOREIGN KEY (PalletEntradaID) REFERENCES dbo.PalletsEntrada(ID)
             );
 
             IF OBJECT_ID('dbo.PalletsDescontados', 'U') IS NULL CREATE TABLE dbo.PalletsDescontados (
-                ID INT PRIMARY KEY IDENTITY(1,1),
-                TareaDescuentoID INT NOT NULL,
-                Cliente VARCHAR(50) NOT NULL,
-                CantidadDescontada INT NOT NULL,
-                FechaHoraDescuento DATETIME NOT NULL DEFAULT GETDATE(),
-                UsuarioDescuento VARCHAR(50) NULL,
-                FOREIGN KEY (TareaDescuentoID) REFERENCES dbo.TareasDescuento(ID)
+                ID INT PRIMARY KEY IDENTITY(1,1), TareaDescuentoID INT NOT NULL, Cliente VARCHAR(50) NOT NULL, CantidadDescontada INT NOT NULL, FechaHoraDescuento DATETIME NOT NULL DEFAULT GETDATE(), UsuarioDescuento VARCHAR(50) NULL, FOREIGN KEY (TareaDescuentoID) REFERENCES dbo.TareasDescuento(ID)
             );
 
             IF OBJECT_ID('dbo.Movimientos', 'U') IS NULL CREATE TABLE dbo.Movimientos (
-                ID INT PRIMARY KEY IDENTITY(1,1),
-                TipoMovimiento VARCHAR(20) NOT NULL,
-                PalletEntradaID INT NULL,
-                TareaDescuentoID INT NULL,
-                PalletsDescontadosID INT NULL,
-                Cliente VARCHAR(50) NOT NULL,
-                Cantidad INT NOT NULL,
-                Pasillo VARCHAR(50) NULL,
-                FechaHora DATETIME NOT NULL DEFAULT GETDATE(),
-                Usuario VARCHAR(50) NULL
+                ID INT PRIMARY KEY IDENTITY(1,1), TipoMovimiento VARCHAR(20) NOT NULL, PalletEntradaID INT NULL, TareaDescuentoID INT NULL, PalletsDescontadosID INT NULL, Cliente VARCHAR(50) NOT NULL, Cantidad INT NOT NULL, Pasillo VARCHAR(50) NULL, FechaHora DATETIME NOT NULL DEFAULT GETDATE(), Usuario VARCHAR(50) NULL
             );
         `;
 
         const createTablesRequest = connection.request(); // Obteniendo request de la conexión
         await createTablesRequest.query(createTablesQuery);
-        console.log("Tablas verificadas/creadas exitosamente.");
+        console.en(`Tablas verificadas/creadas exitosamente.`);
 
         // Inicia el servidor web solo después de que la conexión a la BD sea exitosa y las tablas listas
         app.listen(appPort, () => {
