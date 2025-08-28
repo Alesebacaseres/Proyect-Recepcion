@@ -1,5 +1,5 @@
 # cloudbuild.yaml
-#Cambio
+
 # Define sustituciones que se usarán en los pasos.
 substitutions:
   _MY_PROJECT_ID: golden-tempest-469108-r4
@@ -13,19 +13,23 @@ substitutions:
 # Define los pasos que se ejecutarán en Cloud Build.
 steps:
   # Paso 1: Construir la imagen de Docker.
+  # Usa la imagen de Cloud Builders para Docker.
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Build Docker image'
+    # --- MODIFICACIÓN CLAVE AQUÍ ---
+    # Aseguramos que cada argumento se trate como una cadena separada.
+    # Usamos '--tag' explícitamente y envolvemos los argumentos entre comillas.
     args:
-      - build
-      - t'
-      - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
+      - 'build'
+      - '--tag=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
       - '.' # El '.' indica que el contexto de construcción es el directorio actual.
+    # --- FIN DE LA MODIFICACIÓN ---
 
   # Paso 2: Subir la imagen de Docker construida a Artifact Registry.
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Push Docker image'
     args:
-      - push
+      - 'push'
       - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
 
   # Paso 3: Desplegar la imagen en Cloud Run.
@@ -33,20 +37,16 @@ steps:
     id: 'Deploy to Cloud Run'
     entrypoint: 'gcloud'
     args:
-      - run
-      - deploy
-      - '${_MY_SERVICE_NAME}' # Nombre del servicio en Cloud Run.
-      - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}' # Imagen a desplegar.
-      - '--region=${_MY_REGION}' # Región de Cloud Run.
-      - '--platform=managed' # Usa la plataforma gestionada de Cloud Run.
-      - '--allow-unauthenticated' # Permite el acceso público. Elimina si quieres acceso restringido.
-      # Conecta a la instancia de Cloud SQL especificada.
+      - 'run'
+      - 'deploy'
+      - '${_MY_SERVICE_NAME}'
+      - '--image=${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
+      - '--region=${_MY_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
       - '--add-cloudsql-instances=${_SQL_INSTANCE}'
-      # --- VARIABLES DE ENTORNO PARA LA APLICACIÓN EN CLOUD RUN ---
-      # Asegúrate de que los nombres de las variables aquí coincidan EXACTAMENTE con lo que lees en server.js.
-      # ¡IMPORTANTE! Asegúrate de que la conexión a la BD y las credenciales sean correctas.
       - '--set-env-vars=DB_SERVER=34.171.224.221,DB_USER=sqlserver,DB_PASSWORD=Aventura54,DB_DATABASE=Recepcion'
-      - '--port=8080' # Indica a Cloud Run que tu contenedor escucha en el puerto 8086.
+      - '--port=8080'
 
 # Lista de imágenes que se guardarán en Artifact Registry (opcional, pero buena práctica).
 images:
@@ -54,4 +54,5 @@ images:
 
 # Opciones de construcción.
 options:
+  # Configura el logging para enviar solo a Cloud Logging.
   logging: CLOUD_LOGGING_ONLY
