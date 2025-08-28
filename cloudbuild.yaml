@@ -17,7 +17,7 @@ steps:
     id: 'Build Docker image'
     args:
       - build
-      V -t'
+      - t'
       - '${_MY_REGION}-docker.pkg.dev/${_MY_PROJECT_ID}/${_MY_AR_REPO}/${_MY_IMAGE_NAME}:${COMMIT_SHA}'
       - '.' # El '.' indica que el contexto de construcción es el directorio actual.
 
