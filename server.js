@@ -59,7 +59,8 @@ const dbConfig = {
     options: {
         database: dbDatabase,
         port: 1433, // Puerto estándar de SQL Server. Ajústalo si tu servidor usa otro puerto.
-        // encrypt: true, // Considera habilitar si tu servidor SQL requiere SSL/TLS. Es una buena práctica.
+       encrypt: true,
+        trustServerCertificate: true,
     }
 };
 
