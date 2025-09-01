@@ -240,6 +240,73 @@ const API_URL = '/api';
 const $ = (s, p = document) => p.querySelector(s);
 const $$ = (s, p = document) => p.querySelectorAll(s);
 
+// Evento para el formulario de Ingreso de Pallet
+$('#formAdd').addEventListener('submit', async e => {
+    console.log('--- Evento submit del formulario #formAdd disparado ---'); // <-- NUEVO LOG DE DEPURACIÓN
+    e.preventDefault(); // Previene el comportamiento por defecto del formulario
+
+    const cantidadInput = $('#cantidad');
+    const clienteSelect = $('#cliente');
+    const usuarioInput = $('#UsuarioIngreso');
+
+    // --- CAPTURA DE VALORES ---
+    const cantidad = parseInt(cantidadInput.value.trim());
+    const cliente = clienteSelect.value; // El valor del select
+    const usuarioIngreso = usuarioInput.value.trim();
+    // --- FIN CAPTURA DE VALORES ---
+
+    // --- VALIDACIONES ---
+    if (isNaN(cantidad) || cantidad <= 0) { 
+        alert('Por favor, ingresa una cantidad válida.'); 
+        return; 
+    }
+    if (!cliente) { 
+        alert('Por favor, selecciona un comitente.'); 
+        return; 
+    }
+    if (!usuarioIngreso) { 
+        alert('El usuario de ingreso es requerido.'); 
+        return; 
+    }
+    // --- FIN VALIDACIONES ---
+
+    // --- DEPURACIÓN: Imprime los datos que se intentan enviar ---
+    console.log("Intentando cargar pallet con estos datos:", {
+        cantidad: cantidad,
+        cliente: cliente,
+        UsuarioIngreso: usuarioIngreso
+    });
+    // --- FIN DEPURACIÓN ---
+
+    try {
+        console.log('--- Realizando fetch a /api/pendientes ---'); // <-- NUEVO LOG DE DEPURACIÓN
+        const response = await fetch(`${API_URL}/pendientes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cantidad, cliente, UsuarioIngreso: usuarioIngreso })
+        });
+
+        console.log('--- Respuesta recibida del fetch:', response.status, response.statusText); // <-- NUEVO LOG DE DEPURACIÓN
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`¡Éxito! ${result.message || 'Pallet cargado.'}`);
+        $('#formAdd').reset(); // Limpiar el formulario después de éxito
+        // Refrescamos ambas listas para que los cambios se reflejen en ambas vistas
+        fetchPendientes('pendingList');
+        fetchPendientes('detailList');
+        fetchStatus();
+    } catch (error) {
+        console.error('Error al agregar pallet:', error);
+        alert(`Error al cargar pallet: ${error.message}`);
+    }
+});
+
+
 // Estado de la aplicación
 let appState = {
     pendingPallets: [], // Lista de pallets pendientes de tareas
