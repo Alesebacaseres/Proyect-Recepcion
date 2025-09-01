@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Control de Pallets</title>
 <style>
+/* --- ESTILOS CSS --- */
 :root{
  --bg:#0f172a;
  --panel:#111827;
@@ -36,6 +37,20 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 .muted{color:var(--muted)}
 .list{display:grid;gap:8px;max-height:420px;overflow:auto;padding-right:4px}
 .item{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:10px 12px;border-radius:12px}
+.item > div:nth-child(2) { /* Ajuste para alinear botones y badges correctamente */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Alinea al final */
+    gap: 8px; /* Espacio entre elementos */
+    flex-wrap: wrap; /* Permite que los botones pasen a la siguiente línea si no caben */
+}
+.badge-container { /* Contenedor específico para badges y botones */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#0b1220;border:1px solid rgba(255,255,255,.1);text-align:center;margin-left:6px}
 .empty{border:1px dashed rgba(255,255,255,.15);padding:20px;border-radius:12px;text-align:center}
 .kpi{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -44,132 +59,235 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 .search{width:100%}
 .divider{height:1px;background:rgba(255,255,255,.08);margin:12px 0}
 #discountInfo, #taskGenInfo{margin-top:8px;font-size:12px;color:var(--muted)}
+
+/* --- NUEVOS ESTILOS PARA LA NAVEGACIÓN ENTRE PANTALLAS --- */
+.main-content > div { /* Aplica a todas las secciones principales */
+    display: none; /* Ocultas por defecto */
+    margin-top: 20px; /* Espacio después de la cabecera */
+}
+.main-content > div.visible {
+    display: block; /* Se muestra si tiene la clase 'visible' */
+}
+/* Ajuste para que la card de KPIs no se oculte */
+.kpi {
+    display: flex !important; /* Asegura que se muestre siempre */
+}
+/* Ajuste para que la navegación principal sí se vea siempre */
+nav { /* Selecciona la navegación directamente si solo hay una nav principal */
+    display: flex !important; /* Asegura que la nav se muestre siempre */
+}
 </style>
 </head>
 <body>
 <div class="wrap">
- <h1>Control de pallets</h1>
- <div class="kpi">
-  <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
-  <div class="box"><div class="small">Descontados</div><div id="kpiDone">0</div></div>
-  <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
-  <!--<button id="btnClear" class="ghost" style="margin-left:auto;">🗑 Borrar datos</button>-->
- </div>
- <div class="grid">
-  <!-- Ventana 1: Ingreso -->
-  <section class="card">
-   <h3>Ingreso de pallet</h3>
-   <form id="formAdd" class="row" autocomplete="off">
-    <input id="cantidad" type="number" placeholder="Cantidad" min="1" required />
-    <select id="cliente" required>
-     <option value="" disabled selected>Comitente</option>
-          <option value="ANDRATX">ANDRATX</option>
-          <option value="ANDROMACO">ANDROMACO</option>
-          <option value="ARGENTIA">ARGENTIA</option>
-          <option value="BEHRING">BEHRING</option>
-          <option value="BUYANOR">BUYANOR</option>
-          <option value="CEPAGE">CEPAGE</option>
-          <option value="DERMA">DERMA</option>
-          <option value="FERRING">FERRING</option>
-          <option value="FINADIET">FINADIET</option>
-          <option value="GEMA BIOTECH">GEMA BIOTECH</option>
-          <option value="MAXVISION">MAXVISION</option>
-          <option value="MILLET">MILLET</option>
-          <option value="MJOHNSON">MJOHNSON</option>
-          <option value="NOVO">NOVO</option>
-          <option value="NOVOMM">NOVOMM</option>
-          <option value="NUTRIBABY">NUTRIBABY</option>
-          <option value="NUTRICION">NUTRICION</option>
-          <option value="POEN">POEN</option>
-          <option value="RAFFOMTV">RAFFOMTV</option>
-          <option value="RAYMOS">RAYMOS</option>
-          <option value="RECKITT">RECKITT</option>
-          <option value="ROCHEDIA">ROCHEDIA</option>
-          <option value="ROEMMERS">ROEMMERS</option>
-          <option value="SANCOR">SANCOR</option>
-          <option value="SOPHIA">SOPHIA</option>
-    </select>
-    <!-- Campo para el usuario que realiza la acción -->
-    <input id="UsuarioIngreso" type="text" placeholder="Usuario" required  />
-    <button class="primary" type="submit">Cargar</button>
-   </form>
-   <div class="divider"></div>
-   <input class="search" id="searchPend" placeholder="Filtrar por comitente..." />
-   <div id="pendingList" class="list"></div>
-  </section>
+    <h1>Control de pallets</h1>
+    <div class="kpi">
+        <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
+        <div class="box"><div class="small">Descontados</div><div id="kpiDone">0</div></div>
+        <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
+    </div>
 
-  <!-- Ventana 2: Generar tareas -->
-  <section class="card">
-   <h3>Generar tareas de descuento</h3>
-   <input class="search" id="searchDetail" placeholder="Filtrar por comitente..." />
-   <div id="detailList" class="list"></div>
-   
-   <div id="taskGenSection" style="display:none; margin-top:12px;">
-    <h4>Configurar tarea</h4>
-    <form id="formTaskGen" class="row" autocomplete="off">
-     <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
-     <input id="taskPasillo" placeholder="Pasillo" required />
-     <button class="primary" type="submit">Continuar</button>
-    </form>
-    <div class="small muted" id="taskGenInfo"></div>
-   </div>
-  </section>
+    <!-- Navegación Principal -->
+    <nav style="margin-top: 20px; margin-bottom: 20px;">
+        <!-- Usamos data-target para que el JS pueda leer qué ventana mostrar -->
+        <button data-target="ingreso-pallet">1. Ingreso</button>
+        <button data-target="generar-tarea">2. Generar Tarea</button>
+        <button data-target="descontar-pallet">3. Descontar Pallet</button>
+        
+        <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+            <label for="fechaInicioExcel" class="muted" style="font-size: 14px;">Desde:</label>
+            <input type="date" id="fechaInicioExcel" style="width: auto; padding: 6px 10px;"/>
+            
+            <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
+            <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
+            
+            <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
+        </div>
+        <!-- *** FIN NUEVA SECCIÓN *** -->
+    </nav>
 
-  <!-- Ventana 3: Descontar -->
-  <aside class="card">
-   <h3>Descontar pallets</h3>
-   <div id="taskList" class="list"></div>
-   <div id="discountSection" style="display:none;margin-top:12px;">
-    <h4>Descontar cantidad</h4>
+    <!-- Contenedor principal para las diferentes pantallas/ventanas -->
+    <div class="main-content">
+
+        <!-- Ventana 1: Ingreso de Pallet -->
+        <div id="ingreso-pallet" class="ventana">
+            <section class="card">
+                <h3>Ingreso de pallet</h3>
+                <form id="formAdd" class="row" autocomplete="off">
+                    <input id="cantidad" type="number" placeholder="Cantidad" min="1" required />
+                    <select id="cliente" required>
+                        <option value="" disabled selected>Comitente</option>
+                        <option value="ANDRATX">ANDRATX</option>
+                        <option value="ANDROMACO">ANDROMACO</option>
+                        <option value="ARGENTIA">ARGENTIA</option>
+                        <option value="BEHRING">BEHRING</option>
+                        <option value="BUYANOR">BUYANOR</option>
+                        <option value="CEPAGE">CEPAGE</option>
+                        <option value="DERMA">DERMA</option>
+                        <option value="FERRING">FERRING</option>
+                        <option value="FINADIET">FINADIET</option>
+                        <option value="GEMA BIOTECH">GEMA BIOTECH</option>
+                        <option value="MAXVISION">MAXVISION</option>
+                        <option value="MILLET">MILLET</option>
+                        <option value="MJOHNSON">MJOHNSON</option>
+                        <option value="NOVO">NOVO</option>
+                        <option value="NOVOMM">NOVOMM</option>
+                        <option value="NUTRIBABY">NUTRIBABY</option>
+                        <option value="NUTRICION">NUTRICION</option>
+                        <option value="POEN">POEN</option>
+                        <option value="RAFFOMTV">RAFFOMTV</option>
+                        <option value="RAYMOS">RAYMOS</option>
+                        <option value="RECKITT">RECKITT</option>
+                        <option value="ROCHEDIA">ROCHEDIA</option>
+                        <option value="ROEMMERS">ROEMMERS</option>
+                        <option value="SANCOR">SANCOR</option>
+                        <option value="SOPHIA">SOPHIA</option>
+                    </select>
+                    <input id="UsuarioIngreso" type="text" placeholder="Usuario" required />
+                    <button class="primary" type="submit">Cargar</button>
+                </form>
+                <div class="divider"></div>
+                <input class="search" id="searchPend" placeholder="Filtrar por comitente..." />
+                <div id="pendingList" class="list"></div> <!-- Lista para la primera solapa -->
+            </section>
+        </div>
+
+        <!-- Ventana 2: Generar Tareas -->
+        <div id="generar-tarea" class="ventana">
+            <section class="card">
+                <h3>Generar tareas de descuento</h3>
+                <input class="search" id="searchDetail" placeholder="Filtrar por comitente..." />
+                <div id="detailList" class="list"></div> <!-- Lista para la segunda solapa -->
+
+                <!-- Sección de configuración de tarea (oculta por defecto) -->
+                <div id="taskGenSection" style="display: none;">
+                    <h4>Configurar tarea para: <span id="currentPalletClient"></span></h4>
+                    <form id="formTaskGen" class="row" autocomplete="off">
+                        <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
+                        <input id="taskPasillo" placeholder="Pasillo" required />
+                        <button class="primary" type="submit">Continuar</button>
+                        <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button> <!-- Botón Cancelar -->
+                    </form>
+                    <div class="small muted" id="taskGenInfo"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Ventana 3: Descontar Pallet -->
+        <div id="descontar-pallet" class="ventana">
+            <aside class="card">
+                <h3>Descontar pallets</h3>
+                <input class="search" id="searchTask" placeholder="Filtrar por cliente o pasillo..." />
+                <div id="taskList" class="list"></div> <!-- Aquí se listarán las tareas disponibles para descontar -->
+
+              
+              
+<!-- Sección de descuento (oculta por defecto) -->
+<div id="discountSection" style="display: none;">
+    <h4>Descontar cantidad para: <span id="currentTaskClient"></span></h4>
     <form id="formDiscount" class="row" autocomplete="off">
-     <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
-     <button class="primary" type="submit">Descontar</button>
+        <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
+        
+        <!-- Botón Descontar (verde) -->
+        <button class="primary" type="submit">Descontar</button> 
+        
+        <!-- Botón Cancelar (transparente/warn) -->
+        <button type="button" class="ghost warn" onclick="hideDiscountSection()">Cancelar</button> 
     </form>
     <div class="small muted" id="discountInfo"></div>
-   </div>
-  </aside>
- </div>
 </div>
+
+       
+
+    </div> <!-- Fin de .main-content -->
+</div> <!-- Fin de .wrap -->
 
 <!-- Plantillas para los elementos de la lista -->
 <template id="tplItem">
- <div class="item">
-  <div>
-   <div class="client"></div>
-   <div class="small"><span class="cantidad"></span></div>
-  </div>
-  <div class="badge state"></div>
- </div>
+    <div class="item">
+        <div>
+            <div class="client"></div>
+            <div class="small"><span class="cantidad"></span></div>
+        </div>
+        <!-- El div para el badge y/o botones -->
+        <div class="badge-container"></div> 
+        <!-- El botón para generar tarea se agregará dinámicamente en JS solo si es necesario -->
+    </div>
 </template>
 
+<!-- Plantillas para los elementos de la lista de Tareas -->
 <template id="tplTask">
- <div class="item">
-  <div>
-   <div class="client"></div>
-   <div class="small"><span class="cantidad"></span></div>
-  </div>
-  <button class="warn btnTask">Descontar</button>
- </div>
+    <div class="item">
+        <div>
+            <div class="client"></div>
+            <div class="small"><span class="cantidad"></span></div>
+        </div>
+        <!-- Div para alinear los botones -->
+        <div class="row" style="gap: 8px;"> 
+            <button class="primary btnTask">Descontar</button> 
+            <button type="button" class="ghost warn">Cancelar</button> 
+        </div>
+    </div>
 </template>
 
+<!-- Script para la lógica del frontend -->
 <script>
-// Definimos la URL base de nuestra API backend
+// --- CONFIGURACIÓN BÁSICA ---
 const API_URL = '/api';
 
-// Funciones de utilidad para seleccionar elementos del DOM
+// Helpers para seleccionar elementos DOM
 const $ = (s, p = document) => p.querySelector(s);
 const $$ = (s, p = document) => p.querySelectorAll(s);
 
-// Estado local para la aplicación frontend
+// Estado de la aplicación
 let appState = {
-    pendingPallets: [],
-    tasks: [],
-    currentTaskToDiscount: null
+    pendingPallets: [], // Lista de pallets pendientes de tareas
+    tasks: [], // Lista de tareas de descuento pendientes
+    currentTaskToDiscount: null, // Guarda la tarea seleccionada para descontar (de la pestaña Descontar Pallet)
+    currentPalletToDiscountDirectly: null, // Guarda el pallet seleccionado para descontar DIRECTAMENTE (de la pestaña Ingreso)
+    currentPalletForTask: null // Guarda el pallet seleccionado para generar tarea (de la pestaña Generar Tarea)
 };
 
-// --- Funciones para interactuar con la API del backend ---
+// --- LÓGICA PARA MOSTRAR/OCULTAR SECCIONES ---
+function mostrarVentana(idVentana) {
+    const secciones = $$('.main-content > div');
+    secciones.forEach(seccion => {
+        seccion.classList.remove('visible');
+        seccion.style.display = 'none'; 
+    });
 
-// Obtiene los KPIs generales
+    const ventanaAMostrar = $(`#${idVentana}`);
+    if (ventanaAMostrar) {
+        ventanaAMostrar.classList.add('visible');
+        ventanaAMostrar.style.display = 'block'; 
+    }
+
+    // Lógica para recargar datos según la ventana activa
+    if (idVentana === 'ingreso-pallet') {
+        fetchPendientes('pendingList'); 
+        hideTaskGenSection(); 
+        // Ocultamos la sección de descuento si estuviera visible
+        hideDiscountSection(); 
+    }
+
+    if (idVentana === 'generar-tarea') {
+        fetchPendientes('detailList'); 
+        $('#taskGenSection').style.display = 'none'; 
+        // Ocultamos la sección de descuento si estuviera visible
+        hideDiscountSection(); 
+    }
+    
+    if (idVentana === 'descontar-pallet') {
+        // Al entrar en la pestaña de "Descontar Pallet", recargamos las tareas
+        fetchTasks();
+        // Aseguramos que la sección de descuento directo esté oculta
+        hideDiscountSection();
+    }
+}
+
+// --- LÓGICA PARA CARGAR DATOS EN TABLAS Y SECCIONES ---
+
 async function fetchStatus() {
     try {
         const response = await fetch(`${API_URL}/status`);
@@ -180,48 +298,85 @@ async function fetchStatus() {
         $('#kpiLast').textContent = data.lastAction;
     } catch (error) {
         console.error('Error fetching status:', error);
-        alert('Error al cargar el estado general. Verifica la consola para detalles.');
+        $('#kpiPend').textContent = 'ERR';
+        $('#kpiDone').textContent = 'ERR';
+        $('#kpiLast').textContent = 'ERR';
+        alert('Error al cargar el estado general. Por favor, verifica la consola.');
     }
 }
 
-// Obtiene la lista de pallets pendientes
-async function fetchPendientes(searchTerm = '') {
+async function fetchPendientes(targetListId = 'pendingList') {
+    const searchTerm = $('#' + (targetListId === 'detailList' ? 'searchDetail' : 'searchPend')).value;
     try {
         const response = await fetch(`${API_URL}/pendientes?search=${encodeURIComponent(searchTerm)}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        appState.pendingPallets = await response.json();
-        renderPendientes();
+        const data = await response.json();
+        appState.pendingPallets = data;
+        renderPendientes(targetListId);
     } catch (error) {
-        console.error('Error fetching pending pallets:', error);
-        alert('Error al cargar pallets pendientes. Verifica la consola para detalles.');
+        console.error(`Error fetching pending pallets for ${targetListId}:`, error);
+        alert(`Error al cargar pallets pendientes. Por favor, verifica la consola.`);
+        appState.pendingPallets = []; 
+        renderPendientes(targetListId); 
     }
 }
 
-// Envía la información de un nuevo pallet para ingresarlo
-async function addPallet(cantidad, cliente, UsuarioIngreso) {
-    try {
-        const response = await fetch(`${API_URL}/pendientes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cantidad, cliente, UsuarioIngreso })
-        });
+function renderPendientes(targetListId) {
+    const listElement = $(`#${targetListId}`);
+    listElement.innerHTML = ''; 
 
-        if (response.ok) {
-            alert('Pallet ingresado exitosamente.');
-            $('#formAdd').reset();
-            fetchStatus();
-            fetchPendientes();
+    const term = $('#' + (targetListId === 'detailList' ? 'searchDetail' : 'searchPend')).value.trim().toLowerCase();
+    const filteredData = appState.pendingPallets.filter(it =>
+        it.Cliente.toLowerCase().includes(term)
+    );
+
+    if (!filteredData.length) {
+        listElement.innerHTML = '<div class="empty">No hay pallets pendientes.</div>';
+        return;
+    }
+
+    filteredData.forEach(pallet => {
+        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
+        $('.client', itemNode).textContent = pallet.Cliente;
+        $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
+
+        const fechaIngreso = pallet.FechaHoraIngreso ? new Date(pallet.FechaHoraIngreso) : null;
+        let estadoText = `Pendiente: ${pallet.DisponibleParaTareas}`; 
+        if (fechaIngreso && !isNaN(fechaIngreso.getTime())) {
+            estadoText += ` (${fechaIngreso.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${fechaIngreso.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
         } else {
-            const errorData = await response.json();
-            alert(`Error al ingresar pallet: ${errorData.message || response.statusText || 'Error desconocido'}`);
+            estadoText += " (Fecha desconocida)";
         }
-    } catch (error) {
-        console.error('Error adding pallet:', error);
-        alert('Error de conexión al intentar ingresar pallet.');
-    }
+        
+        const badgeContainer = itemNode.querySelector('.badge-container'); 
+        if (badgeContainer) {
+            badgeContainer.innerHTML = `<span class="badge">${estadoText}</span>`;
+        }
+
+        // *** Lógica Condicional para los Botones ***
+        if (targetListId === 'detailList') { // Si estamos en la solapa "Generar Tarea"
+            itemNode.dataset.palletEntradaId = pallet.PalletEntradaID;
+            itemNode.dataset.cliente = pallet.Cliente;
+            itemNode.dataset.disponible = pallet.DisponibleParaTareas;
+
+            const btnGenerar = document.createElement('button');
+            btnGenerar.textContent = "Generar tarea";
+            btnGenerar.className = "primary";
+            btnGenerar.addEventListener('click', () => {
+                showTaskGenSection(pallet);
+            });
+            
+            if (badgeContainer) {
+                badgeContainer.appendChild(btnGenerar);
+            }
+
+        } 
+        // *** Fin de Lógica Condicional ***
+
+        listElement.appendChild(itemNode);
+    });
 }
 
-// Obtiene la lista de tareas de descuento pendientes
 async function fetchTasks() {
     try {
         const response = await fetch(`${API_URL}/tareas-descuento`);
@@ -230,292 +385,376 @@ async function fetchTasks() {
         renderTasks();
     } catch (error) {
         console.error('Error fetching tasks:', error);
-        alert('Error al cargar tareas de descuento. Verifica la consola para detalles.');
+        alert('Error al cargar tareas de descuento. Por favor, verifica la consola.');
+        appState.tasks = []; 
+        renderTasks(); 
     }
 }
 
-// Envía la información para generar una nueva tarea de descuento
-async function generateTask(PalletEntradaID, cliente, cantidad, pasillo) {
-    try {
-        const response = await fetch(`${API_URL}/tareas-descuento`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ PalletEntradaID, cliente, cantidad, pasillo })
-        });
-        if (response.ok) {
-            alert('Tarea generada exitosamente.');
-            $('#formTaskGen').reset();
-            hideTaskGenSection();
-            fetchStatus();
-            fetchPendientes();
-            fetchTasks();
-        } else {
-            const errorData = await response.json();
-            alert(`Error al generar tarea: ${errorData.message || response.statusText || 'Error desconocido'}`);
-        }
-    } catch (error) {
-        console.error('Error generating task:', error);
-        alert('Error de conexión al intentar generar tarea.');
-    }
-}
-
-// Envía la cantidad de pallets a descontar para una tarea específica
-async function discountPallet(tareaId, cantidadADescontar) {
-    try {
-        const response = await fetch(`${API_URL}/descontar-pallet`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tareaId, cantidadADescontar })
-        });
-        if (response.ok) {
-            alert('Pallets descontados exitosamente.');
-            $('#formDiscount').reset();
-            hideDiscountSection();
-            fetchStatus();
-            fetchPendientes();
-            fetchTasks();
-        } else {
-            const errorData = await response.json();
-            alert(`Error al descontar pallet: ${errorData.message || response.statusText || 'Error desconocido'}`);
-        }
-    } catch (error) {
-        console.error('Error discounting pallet:', error);
-        alert('Error de conexión al intentar descontar pallet.');
-    }
-}
-
-// Borra todos los datos de la aplicación
-async function clearAllData() {
-    if (!confirm('¿Estás seguro de que quieres borrar TODOS los datos de la aplicación? Esta acción no se puede deshacer.')) {
-        return;
-    }
-    try {
-        const response = await fetch(`${API_URL}/clear-all`, { method: 'DELETE' });
-        if (response.ok) {
-            alert('Todos los datos han sido borrados.');
-            appState = { pendingPallets: [], tasks: [], currentTaskToDiscount: null };
-            render();
-        } else {
-            const errorData = await response.json();
-            alert(`Error al borrar datos: ${errorData.message || response.statusText || 'Error desconocido'}`);
-        }
-    } catch (error) {
-        console.error('Error clearing data:', error);
-        alert('Error de conexión al intentar borrar datos.');
-    }
-}
-
-// --- Funciones de Renderizado ---
-
-// Renderiza la lista de pallets pendientes
-function renderPendientes() {
-    const term = $('#searchPend').value.trim().toLowerCase();
-    const list = $('#pendingList');
-    list.innerHTML = '';
-
-    const filteredData = appState.pendingPallets.filter(it =>
-        it.Cliente.toLowerCase().includes(term)
-    );
-
-    if (!filteredData.length) {
-        list.innerHTML = '<div class="empty">No hay pallets pendientes para generar tareas.</div>';
-        return;
-    }
-
-    filteredData.forEach(it => {
-        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
-        $('.client', itemNode).textContent = it.Cliente;
-        $('.cantidad', itemNode).textContent = `Disponible: ${it.DisponibleParaTareas}`;
-        $('.state', itemNode).textContent = `Ingresado: ${it.CantidadTotalIngresada}`;
-        
-        itemNode.dataset.palletEntradaId = it.PalletEntradaID;
-        itemNode.dataset.cliente = it.Cliente;
-        itemNode.dataset.disponible = it.DisponibleParaTareas;
-
-        const btnGenerar = document.createElement('button');
-        btnGenerar.textContent = "Generar tarea";
-        btnGenerar.className = "primary";
-        btnGenerar.addEventListener('click', () => {
-            showTaskGenSection(it);
-        });
-        itemNode.appendChild(btnGenerar);
-        list.appendChild(itemNode);
-    });
-}
-
-// Renderiza la lista de tareas de descuento pendientes
 function renderTasks() {
     const list = $('#taskList');
-    list.innerHTML = '';
+    list.innerHTML = ''; 
 
     if (!appState.tasks.length) {
         list.innerHTML = '<div class="empty">No hay tareas pendientes.</div>';
         return;
     }
 
-    appState.tasks.forEach(p => {
+    appState.tasks.forEach(tarea => {
         const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
-        $('.client', taskNode).textContent = `${p.Cliente} (Pasillo: ${p.Pasillo})`;
-        $('.cantidad', taskNode).textContent = `Pendiente: ${p.CantidadPendienteDescontar}`;
+        $('.client', taskNode).textContent = `${tarea.Cliente} (Pasillo: ${tarea.Pasillo})`;
+        $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar}`;
 
-        const btnTask = taskNode.querySelector('.btnTask');
-        btnTask.dataset.taskId = p.ID;
-        btnTask.dataset.cliente = p.Cliente;
-        btnTask.dataset.cantidadPendiente = p.CantidadPendienteDescontar;
-        btnTask.addEventListener('click', handleTaskButtonClick);
+        const btnTask = taskNode.querySelector('.btnTask'); 
+        const btnCancel = taskNode.querySelector('.item > div:last-child > button:last-child'); 
+
+        taskNode.dataset.taskId = tarea.ID;
+        taskNode.dataset.cliente = tarea.Cliente;
+        taskNode.dataset.cantidadPendiente = tarea.CantidadPendienteDescontar;
+        taskNode.dataset.pasillo = tarea.Pasillo;
+
+        btnTask.addEventListener('click', (event) => {
+            handleTaskButtonClick(event); 
+        });
+
+        if (btnCancel) { 
+            btnCancel.addEventListener('click', async () => {
+                if (!confirm(`¿Estás seguro de que deseas cancelar la tarea ${tarea.ID} para ${tarea.Cliente}?`)) {
+                    return; 
+                }
+                
+                try {
+                    const response = await fetch(`${API_URL}/tareas-descuento/${tarea.ID}`, {
+                        method: 'DELETE', 
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const result = await response.json(); 
+
+                    if (!response.ok) {
+                        throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                    }
+
+                    alert(`¡Éxito! ${result.message || 'Tarea cancelada.'}`);
+                    
+                    fetchTasks(); 
+                    fetchPendientes('pendingList'); 
+                    fetchPendientes('detailList'); 
+                    fetchStatus(); 
+                } catch (error) {
+                    console.error('Error al cancelar tarea:', error);
+                    alert(`Error al cancelar tarea: ${error.message}`);
+                }
+            });
+        }
 
         list.appendChild(taskNode);
     });
 }
 
-// Muestra la sección para generar una tarea
-let currentPalletForTask = null;
+// --- SECCIONES DE INTERACCIÓN ESPECÍFICA ---
+
 function showTaskGenSection(pallet) {
-    currentPalletForTask = pallet;
+    // --- VERIFICACIÓN CRÍTICA ---
+    if (!pallet || !pallet.PalletEntradaID || !pallet.Cliente || typeof pallet.DisponibleParaTareas === 'undefined') {
+        console.error("Error: Se intentó mostrar la sección de generación de tarea con datos de pallet inválidos.", pallet);
+        alert("Error interno al seleccionar el pallet. Por favor, intenta de nuevo.");
+        return; 
+    }
+   
+    appState.currentPalletForTask = pallet; // Guarda el pallet seleccionado
+
+    // Oculta la lista y muestra el formulario
     $('#detailList').style.display = 'none';
     $('#taskGenSection').style.display = 'block';
+
+    $('#currentPalletClient').textContent = pallet.Cliente;
+
     $('#taskCantidad').max = pallet.DisponibleParaTareas;
-    $('#taskCantidad').value = pallet.DisponibleParaTareas;
-    $('#taskPasillo').value = '';
-    $('#taskGenInfo').textContent = `Disponible para esta tarea: ${pallet.DisponibleParaTareas}`;
+    $('#taskCantidad').value = pallet.DisponibleParaTareas; 
+
+    $('#taskPasillo').value = ''; // Mantenemos esto así si el pasillo no viene del pallet y debe ser ingresado por el usuario.
+
+    $('#taskGenInfo').textContent = `Pallet ID: ${pallet.PalletEntradaID}. Disponible para esta tarea: ${pallet.DisponibleParaTareas}`;
 }
 
-// Oculta la sección de generar tarea
 function hideTaskGenSection() {
     $('#taskGenSection').style.display = 'none';
-    $('#detailList').style.display = 'grid';
-    $('#formTaskGen').reset();
-    currentPalletForTask = null;
+    $('#detailList').style.display = 'grid'; 
+    $('#formTaskGen').reset(); 
+    appState.currentPalletForTask = null; 
 }
 
-// Maneja el clic en el botón "Descontar" de una tarea
 function handleTaskButtonClick(event) {
-    const btn = event.target;
-    const taskId = btn.dataset.taskId;
-    const cantidadPendiente = parseInt(btn.dataset.cantidadPendiente);
-    const cliente = btn.dataset.cliente;
+    const clickedButton = event.target; 
+    const taskItemNode = clickedButton.closest('.item'); 
 
+    if (!taskItemNode) {
+        console.error("Error: No se pudo encontrar el elemento contenedor del item de la tarea.");
+        alert("Error interno al seleccionar la tarea. Por favor, inténtalo de nuevo.");
+        return;
+    }
+
+    const taskId = taskItemNode.dataset.taskId;
+    const cantidadPendiente = parseInt(taskItemNode.dataset.cantidadPendiente);
+    const cliente = taskItemNode.dataset.cliente;
+    const pasillo = taskItemNode.dataset.pasillo || 'N/A'; 
+
+    if (!taskId || isNaN(parseInt(taskId))) {
+        console.error("Error: El taskId no es válido en el elemento contenedor.");
+        alert("No se pudo identificar la tarea seleccionada. Por favor, inténtalo de nuevo.");
+        return;
+    }
+    
     appState.currentTaskToDiscount = {
-        id: taskId,
+        id: taskId, 
         cliente: cliente,
         cantidadPendiente: cantidadPendiente
     };
 
     $('#discountSection').style.display = 'block';
-    $('#discountInfo').textContent = `Tarea: ${cliente}. Pendiente de descontar: ${cantidadPendiente} unidades.`;
-    $('#discountCantidad').max = cantidadPendiente;
-    $('#discountCantidad').value = cantidadPendiente;
+    $('#currentTaskClient').textContent = `${cliente} (Pasillo: ${pasillo})`; 
+    
+    $('#discountCantidad').max = cantidadPendiente; 
+    $('#discountCantidad').value = cantidadPendiente; 
+
+    $('#discountInfo').textContent = `Pendiente en tarea: ${cantidadPendiente}`;
 }
 
-// Oculta la sección de descuento
 function hideDiscountSection() {
     $('#discountSection').style.display = 'none';
-    $('#formDiscount').reset();
-    appState.currentTaskToDiscount = null;
+    $('#formDiscount').reset(); 
+    // Limpiamos ambos estados para evitar confusiones
+    appState.currentTaskToDiscount = null; 
+    appState.currentPalletToDiscountDirectly = null;
 }
 
-// Función principal de renderizado inicial y refresco
-function render() {
-    fetchStatus();
-    fetchPendientes($('#searchPend').value);
-    fetchTasks();
-}
-
-// --- Event Listeners ---
-
-// Formulario de Ingreso de Pallet
-$('#formAdd').addEventListener('submit', e => {
-    e.preventDefault();
-    const cantidadInput = $('#cantidad');
-    const clientSelect = $('#cliente');
-    // Capturamos el valor del campo de usuario visible
-    const usuarioIngresoInput = $('#UsuarioIngreso'); 
-
-    const cantidad = parseInt(cantidadInput.value.trim());
-    const cliente = clientSelect.value; // Valor del select (ej: "Novo")
-    const UsuarioIngreso = usuarioIngresoInput.value.trim();
-
-    // --- VALIDACIONES FRONTEND ---
-    // Log para depurar los datos capturados antes de enviar
-    console.log('Frontend: Datos capturados antes de validar y enviar:', { cantidad, cliente, UsuarioIngreso });
-
-    if (isNaN(cantidad) || cantidad <= 0) {
-        alert('Por favor, ingresa una cantidad válida mayor a cero.');
-        cantidadInput.focus();
-        return;
+// Muestra la sección para descontar directamente de un pallet (sin generar tarea previa)
+function showDiscountSectionForPallet(pallet) {
+    if (!pallet || !pallet.PalletEntradaID || !pallet.Cliente || typeof pallet.DisponibleParaTareas === 'undefined') {
+        console.error("Error: Se intentó mostrar la sección de descuento directo con datos de pallet inválidos.", pallet);
+        alert("Error interno al seleccionar el pallet para descontar. Por favor, intenta de nuevo.");
+        return; 
     }
-    if (!cliente) { // Si el cliente no fue seleccionado (el valor por defecto es "")
-        alert('Por favor, selecciona un comitente.');
-        clientSelect.focus();
-        return;
-    }
-    if (!UsuarioIngreso) { // Validar que el usuario no esté vacío o sea solo espacios
-        alert('El usuario de ingreso es requerido.');
-        usuarioIngresoInput.focus(); // Pone el foco en el campo de usuario
-        return;
-    }
+
+    appState.currentPalletToDiscountDirectly = {
+        id: pallet.PalletEntradaID,
+        cliente: pallet.Cliente,
+        disponible: pallet.DisponibleParaTareas
+    };
+
+    $('#discountSection').style.display = 'block';
+    $('#currentTaskClient').textContent = `${pallet.Cliente} (Pallet ID: ${pallet.PalletEntradaID})`; 
     
-    // Si las validaciones pasan, llamamos a la función para enviar a la API
-    addPallet(cantidad, cliente, UsuarioIngreso);
-});
+    $('#discountCantidad').max = pallet.DisponibleParaTareas; 
+    $('#discountCantidad').value = pallet.DisponibleParaTareas; 
 
-// Filtro de Pallets Pendientes
-$('#searchPend').addEventListener('input', () => {
-    fetchPendientes($('#searchPend').value);
-});
+    $('#discountInfo').textContent = `Pendiente en pallet: ${pallet.DisponibleParaTareas}`;
+}
 
-// Filtro de Detalles (para generar tareas) - Reutiliza fetchPendientes
-$('#searchDetail').addEventListener('input', () => {
-    fetchPendientes($('#searchDetail').value);
-});
-
-// Formulario de Generación de Tarea
-$('#formTaskGen').addEventListener('submit', e => {
+// Evento para el formulario de Descontar Pallet (Ventana 3)
+$('#formDiscount').addEventListener('submit', async e => {
     e.preventDefault();
-    if (!currentPalletForTask) return;
+    
+    // Verificamos si estamos descontando de una TAREA o DIRECTAMENTE de un PALLET
+    let url;
+    let requestBody;
+    let mensajeExito = 'Pallet descontado.';
 
-    const cantidad = parseInt($('#taskCantidad').value.trim());
-    const pasillo = $('#taskPasillo').value.trim();
-
-    // Validaciones para la tarea
-    if (isNaN(cantidad) || cantidad <= 0) {
-        alert('Por favor, ingresa una cantidad válida mayor a cero.');
-        $('#taskCantidad').focus();
+    if (appState.currentTaskToDiscount) { // Si estamos descontando de una TAREA
+        if (!appState.currentTaskToDiscount.id) {
+            alert('No hay tarea seleccionada para descontar.');
+            return;
+        }
+        url = `${API_URL}/descontar-pallet`;
+        requestBody = {
+            tareaId: appState.currentTaskToDiscount.id,
+            cantidadADescontar: parseInt($('#discountCantidad').value.trim())
+        };
+        mensajeExito = 'Pallet descontado de la tarea.';
+    } else if (appState.currentPalletToDiscountDirectly) { // Si estamos descontando DIRECTAMENTE del PALLET
+        if (!appState.currentPalletToDiscountDirectly.id) {
+            alert('No hay pallet seleccionado para descontar directamente.');
+            return;
+        }
+        url = `${API_URL}/descontar-pallet-directo`; // Nueva ruta en el backend
+        requestBody = {
+            palletEntradaId: appState.currentPalletToDiscountDirectly.id,
+            cantidadADescontar: parseInt($('#discountCantidad').value.trim())
+        };
+        mensajeExito = 'Pallet descontado directamente.';
+    } else {
+        alert('No hay tarea ni pallet seleccionado para descontar.');
         return;
     }
-    if (!pasillo) {
-        alert('Por favor, ingresa un pasillo válido.');
-        $('#taskPasillo').focus();
-        return;
-    }
-
-    generateTask(currentPalletForTask.PalletEntradaID, currentPalletForTask.Cliente, cantidad, pasillo);
-});
-
-// Evento para el botón de descuento (manejado en renderTasks)
-
-// Formulario de Descuento
-$('#formDiscount').addEventListener('submit', e => {
-    e.preventDefault();
-    if (!appState.currentTaskToDiscount) return;
 
     const cantidadADescontar = parseInt($('#discountCantidad').value.trim());
 
-    // Validaciones para el descuento
     if (isNaN(cantidadADescontar) || cantidadADescontar <= 0) {
-        alert('Por favor, ingresa una cantidad válida a descontar mayor a cero.');
-        $('#discountCantidad').focus();
+        alert('Por favor, ingresa una cantidad válida a descontar.');
         return;
     }
 
-    discountPallet(appState.currentTaskToDiscount.id, cantidadADescontar);
+    try {
+        const response = await fetch(url, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody) 
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`¡Éxito! ${result.message || mensajeExito}`);
+        hideDiscountSection(); 
+
+        fetchTasks(); 
+        fetchPendientes('pendingList'); 
+        fetchPendientes('detailList'); 
+        fetchStatus(); 
+    } catch (error) {
+        console.error('Error al descontar pallet:', error);
+        alert(`Error al descontar pallet: ${error.message}`);
+    } finally {
+        // Limpiamos el estado, independientemente de si hubo éxito o error
+        appState.currentTaskToDiscount = null;
+        appState.currentPalletToDiscountDirectly = null;
+    }
 });
 
-// Botón para borrar todos los datos
-//$('#btnClear').addEventListener('click', clearAllData);
 
-// Inicialización: Cargar datos y renderizar al cargar la página
-render();
+// Evento para el formulario de Generar Tarea (Ventana 2)
+$('#formTaskGen').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    // --- VERIFICACIÓN CRÍTICA ---
+    if (!appState.currentPalletForTask || !appState.currentPalletForTask.PalletEntradaID || !appState.currentPalletForTask.Cliente) {
+        console.error('Error: appState.currentPalletForTask está incompleto o no está definido.', appState.currentPalletForTask);
+        alert('No se ha podido identificar el pallet para generar la tarea. Por favor, selecciona un pallet de la lista anterior.');
+        $('#taskGenSection').style.display = 'none';
+        $('#detailList').style.display = 'grid'; 
+        return;
+    }
+
+    const cantidad = parseInt($('#taskCantidad').value.trim());
+    let pasillo = $('#taskPasillo').value.trim(); 
+
+    if (isNaN(cantidad) || cantidad <= 0) { 
+        alert('Por favor, ingresa una cantidad válida mayor a cero.'); 
+        return; 
+    }
+    // --- VALIDACIÓN DE PASILLO ---
+    if (!pasillo) { 
+        alert('El campo Pasillo es requerido.'); 
+        return; 
+    }
+
+    // --- DEPURACIÓN: Imprime los datos que se intentan enviar ---
+    console.log("Intentando generar tarea con estos datos:", {
+        PalletEntradaID: appState.currentPalletForTask.PalletEntradaID, 
+        cliente: appState.currentPalletForTask.Cliente, 
+        cantidad: cantidad,
+        pasillo: pasillo
+    });
+    // --- FIN DEPURACIÓN ---
+
+    try {
+        const response = await fetch(`${API_URL}/tareas-descuento`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                PalletEntradaID: appState.currentPalletForTask.PalletEntradaID, 
+                cliente: appState.currentPalletForTask.Cliente, 
+                cantidad: cantidad,
+                pasillo: pasillo 
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`¡Éxito! ${result.message || 'Tarea generada.'}`);
+        hideTaskGenSection(); 
+        fetchPendientes('pendingList');
+        fetchPendientes('detailList');
+        fetchTasks(); 
+        fetchStatus(); 
+    } catch (error) {
+        console.error('Error al generar tarea:', error);
+        alert(`Error al generar tarea: ${error.message}`);
+    }
+});
+
+// --- LÓGICA DE NAVEGACIÓN Y EVENTOS GLOBALES ---
+
+document.querySelectorAll('nav button[data-target]').forEach(button => {
+    button.addEventListener('click', () => {
+        const targetId = button.dataset.target;
+        mostrarVentana(targetId);
+    });
+});
+
+const descargarExcelBtn = document.getElementById('descargarExcelBtn');
+const fechaInicioInput = document.getElementById('fechaInicioExcel');
+const fechaFinInput = document.getElementById('fechaFinExcel');
+
+if (descargarExcelBtn) {
+    descargarExcelBtn.addEventListener('click', () => {
+        const fechaInicio = fechaInicioInput.value; 
+        const fechaFin = fechaFinInput.value;     
+
+        let url = '/descargar-movimientos';
+        const params = [];
+
+        if (fechaInicio) {
+            params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
+        }
+        if (fechaFin) {
+            params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
+        }
+        
+        if (params.length > 0) {
+            url += `?${params.join('&')}`;
+        }
+        
+        window.location.href = url;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const secciones = $$('.main-content > div');
+    secciones.forEach(seccion => {
+        seccion.style.display = 'none';
+    });
+
+    mostrarVentana('ingreso-pallet');
+
+    fetchStatus();
+    fetchTasks(); 
+
+    const hoy = new Date();
+    const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    const formatInputDate = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0'); 
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    if (fechaInicioInput) {
+        fechaInicioInput.value = formatInputDate(primerDiaDelMes);
+    }
+    if (fechaFinInput) {
+        fechaFinInput.value = formatInputDate(hoy);
+    }
+});
 </script>
 </body>
 </html>
