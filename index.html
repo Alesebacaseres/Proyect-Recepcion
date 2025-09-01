@@ -76,6 +76,20 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 nav { /* Selecciona la navegación directamente si solo hay una nav principal */
     display: flex !important; /* Asegura que la nav se muestre siempre */
 }
+ /* Media query para pantalla celular */
+  @media (max-width: 600px) {
+    #filtroExcel {
+      flex-direction: column;       
+      align-items: flex-start;      
+      gap: 8px;                     
+      margin-left: 0;               
+    }
+    #filtroExcel input,
+    #filtroExcel button {
+      width: 100%;                  
+      box-sizing: border-box;       
+    }
+  }
 </style>
 </head>
 <body>
@@ -95,15 +109,12 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
         <button data-target="descontar-pallet">3. Descontar Pallet</button>
         
         <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
-        <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-            <label for="fechaInicioExcel" class="muted" style="font-size: 14px;">Desde:</label>
-            <input type="date" id="fechaInicioExcel" style="width: auto; padding: 6px 10px;"/>
-            
-            <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
-            <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
-            
-            <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
-        </div>
+        <div id="filtroExcel" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+        <label for="fechaInicioExcel" class="muted" style="font-size: 14px;">Desde:</label>
+        <input type="date" id="fechaInicioExcel" style="width: auto; padding: 6px 10px;"/>
+         <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
+         <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
+         <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
         <!-- *** FIN NUEVA SECCIÓN *** -->
     </nav>
 
