@@ -62,11 +62,11 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 #discountInfo, #taskGenInfo{margin-top:8px;font-size:12px;color:var(--muted)}
 
 /* --- NUEVOS ESTILOS PARA LA NAVEGACIÓN ENTRE PANTALLAS --- */
-.main-content > div { /* Aplica a todas las secciones principales */
+.main-content > .ventana { /* Aplica a todas las secciones principales */
     display: none; /* Ocultas por defecto */
     margin-top: 20px; /* Espacio después de la cabecera */
 }
-.main-content > div.visible {
+.main-content > .ventana.visible {
     display: block; /* Se muestra si tiene la clase 'visible' */
 }
 /* Ajuste para que la card de KPIs no se oculte */
@@ -76,6 +76,8 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 /* Ajuste para que la navegación principal sí se vea siempre */
 nav { /* Selecciona la navegación directamente si solo hay una nav principal */
     display: flex !important; /* Asegura que la nav se muestre siempre */
+    gap: 10px;
+    margin-bottom: 20px;
 }
  /* Media query para pantalla celular */
   @media (max-width: 600px) {
@@ -90,7 +92,27 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
       width: 100%;                  
       box-sizing: border-box;       
     }
+    nav {
+        flex-direction: column;
+    }
   }
+
+/* Estilos para botones de navegación activos */
+nav button {
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    padding: 10px 16px;
+}
+nav button:hover {
+    opacity: 1 !important;
+}
+nav button.active {
+    opacity: 1;
+    font-weight: bold;
+    background: linear-gradient(90deg, #1e40af, #3b82f6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
 </style>
 </head>
 <body>
@@ -103,11 +125,11 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
     </div>
 
     <!-- Navegación Principal -->
-    <nav style="margin-top: 20px; margin-bottom: 20px;">
+    <nav>
         <!-- Usamos data-target para que el JS pueda leer qué ventana mostrar -->
-        <button data-target="ingreso-pallet">1. Ingreso</button>
-        <button data-target="generar-tarea">2. Generar Tarea</button>
-        <button data-target="descontar-pallet">3. Descontar Pallet</button>
+        <button data-target="ingreso-pallet" class="active">Ingreso</button>
+        <button data-target="generar-tarea">Generar Tarea</button>
+        <button data-target="descontar-pallet">Descontar Pallet</button>
         
         <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
         <div id="filtroExcel" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
@@ -116,6 +138,7 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
          <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
          <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
          <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
+        </div>
         <!-- *** FIN NUEVA SECCIÓN *** -->
     </nav>
 
@@ -123,7 +146,7 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
     <div class="main-content">
 
         <!-- Ventana 1: Ingreso de Pallet -->
-        <div id="ingreso-pallet" class="ventana">
+        <div id="ingreso-pallet" class="ventana visible">
             <section class="card">
                 <h3>Ingreso de pallet</h3>
                 <form id="formAdd" class="row" autocomplete="off">
@@ -193,25 +216,22 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
                 <input class="search" id="searchTask" placeholder="Filtrar por cliente o pasillo..." />
                 <div id="taskList" class="list"></div> <!-- Aquí se listarán las tareas disponibles para descontar -->
 
-              
-              
-<!-- Sección de descuento (oculta por defecto) -->
-<div id="discountSection" style="display: none;">
-    <h4>Descontar cantidad para: <span id="currentTaskClient"></span></h4>
-    <form id="formDiscount" class="row" autocomplete="off">
-        <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
-        
-        <!-- Botón Descontar (verde) -->
-        <button class="primary" type="submit">Descontar</button> 
-        
-        <!-- Botón Cancelar (transparente/warn) -->
-        <button type="button" class="ghost warn" onclick="hideDiscountSection()">Cancelar</button> 
-    </form>
-    <div class="small muted" id="discountInfo"></div>
-</div>
-
-       
-
+                <!-- Sección de descuento (oculta por defecto) -->
+                <div id="discountSection" style="display: none;">
+                    <h4>Descontar cantidad para: <span id="currentTaskClient"></span></h4>
+                    <form id="formDiscount" class="row" autocomplete="off">
+                        <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
+                        
+                        <!-- Botón Descontar (verde) -->
+                        <button class="primary" type="submit">Descontar</button> 
+                        
+                        <!-- Botón Cancelar (transparente/warn) -->
+                        <button type="button" class="ghost warn" onclick="hideDiscountSection()">Cancelar</button> 
+                    </form>
+                    <div class="small muted" id="discountInfo"></div>
+                </div>
+            </aside>
+        </div>
     </div> <!-- Fin de .main-content -->
 </div> <!-- Fin de .wrap -->
 
@@ -254,20 +274,11 @@ const $$ = (s, p = document) => p.querySelectorAll(s);
 
 // Evento para el formulario de Ingreso de Pallet
 $('#formAdd').addEventListener('submit', async e => {
-    console.log('--- Evento submit del formulario #formAdd disparado ---'); // <-- NUEVO LOG DE DEPURACIÓN
-    e.preventDefault(); // Previene el comportamiento por defecto del formulario
+    e.preventDefault();
+    const cantidad = parseInt($('#cantidad').value.trim());
+    const cliente = $('#cliente').value;
+    const usuarioIngreso = $('#UsuarioIngreso').value.trim();
 
-    const cantidadInput = $('#cantidad');
-    const clienteSelect = $('#cliente');
-    const usuarioInput = $('#UsuarioIngreso');
-
-    // --- CAPTURA DE VALORES ---
-    const cantidad = parseInt(cantidadInput.value.trim());
-    const cliente = clienteSelect.value; // El valor del select
-    const usuarioIngreso = usuarioInput.value.trim();
-    // --- FIN CAPTURA DE VALORES ---
-
-    // --- VALIDACIONES ---
     if (isNaN(cantidad) || cantidad <= 0) { 
         alert('Por favor, ingresa una cantidad válida.'); 
         return; 
@@ -280,25 +291,13 @@ $('#formAdd').addEventListener('submit', async e => {
         alert('El usuario de ingreso es requerido.'); 
         return; 
     }
-    // --- FIN VALIDACIONES ---
-
-    // --- DEPURACIÓN: Imprime los datos que se intentan enviar ---
-    console.log("Intentando cargar pallet con estos datos:", {
-        cantidad: cantidad,
-        cliente: cliente,
-        UsuarioIngreso: usuarioIngreso
-    });
-    // --- FIN DEPURACIÓN ---
 
     try {
-        console.log('--- Realizando fetch a /api/pendientes ---'); // <-- NUEVO LOG DE DEPURACIÓN
         const response = await fetch(`${API_URL}/pendientes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cantidad, cliente, UsuarioIngreso: usuarioIngreso })
         });
-
-        console.log('--- Respuesta recibida del fetch:', response.status, response.statusText); // <-- NUEVO LOG DE DEPURACIÓN
 
         const result = await response.json();
 
@@ -307,8 +306,7 @@ $('#formAdd').addEventListener('submit', async e => {
         }
 
         alert(`¡Éxito! ${result.message || 'Pallet cargado.'}`);
-        $('#formAdd').reset(); // Limpiar el formulario después de éxito
-        // Refrescamos ambas listas para que los cambios se reflejen en ambas vistas
+        $('#formAdd').reset();
         fetchPendientes('pendingList');
         fetchPendientes('detailList');
         fetchStatus();
@@ -318,55 +316,58 @@ $('#formAdd').addEventListener('submit', async e => {
     }
 });
 
-
 // Estado de la aplicación
 let appState = {
-    pendingPallets: [], // Lista de pallets pendientes de tareas
-    tasks: [], // Lista de tareas de descuento pendientes
-    currentTaskToDiscount: null, // Guarda la tarea seleccionada para descontar (de la pestaña Descontar Pallet)
-    currentPalletToDiscountDirectly: null, // Guarda el pallet seleccionado para descontar DIRECTAMENTE (de la pestaña Ingreso)
-    currentPalletForTask: null // Guarda el pallet seleccionado para generar tarea (de la pestaña Generar Tarea)
+    pendingPallets: [],
+    tasks: [],
+    currentTaskToDiscount: null,
+    currentPalletToDiscountDirectly: null,
+    currentPalletForTask: null
 };
 
-// --- LÓGICA PARA MOSTRAR/OCULTAR SECCIONES ---
+// --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
 function mostrarVentana(idVentana) {
-    const secciones = $$('.main-content > div');
-    secciones.forEach(seccion => {
-        seccion.classList.remove('visible');
-        seccion.style.display = 'none'; 
+    // Ocultar todas las ventanas
+    const ventanas = $$('.ventana');
+    ventanas.forEach(ventana => {
+        ventana.classList.remove('visible');
     });
-
+    
+    // Mostrar solo la ventana seleccionada
     const ventanaAMostrar = $(`#${idVentana}`);
     if (ventanaAMostrar) {
         ventanaAMostrar.classList.add('visible');
-        ventanaAMostrar.style.display = 'block'; 
     }
+
+    // Actualizar botones activos
+    document.querySelectorAll('nav button[data-target]').forEach(button => {
+        if (button.dataset.target === idVentana) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
 
     // Lógica para recargar datos según la ventana activa
     if (idVentana === 'ingreso-pallet') {
-        fetchPendientes('pendingList'); 
-        hideTaskGenSection(); 
-        // Ocultamos la sección de descuento si estuviera visible
-        hideDiscountSection(); 
+        fetchPendientes('pendingList');
+        hideTaskGenSection();
+        hideDiscountSection();
     }
 
     if (idVentana === 'generar-tarea') {
-        fetchPendientes('detailList'); 
-        $('#taskGenSection').style.display = 'none'; 
-        // Ocultamos la sección de descuento si estuviera visible
-        hideDiscountSection(); 
+        fetchPendientes('detailList');
+        hideTaskGenSection();
+        hideDiscountSection();
     }
     
     if (idVentana === 'descontar-pallet') {
-        // Al entrar en la pestaña de "Descontar Pallet", recargamos las tareas
         fetchTasks();
-        // Aseguramos que la sección de descuento directo esté oculta
         hideDiscountSection();
     }
 }
 
 // --- LÓGICA PARA CARGAR DATOS EN TABLAS Y SECCIONES ---
-
 async function fetchStatus() {
     try {
         const response = await fetch(`${API_URL}/status`);
@@ -380,7 +381,6 @@ async function fetchStatus() {
         $('#kpiPend').textContent = 'ERR';
         $('#kpiDone').textContent = 'ERR';
         $('#kpiLast').textContent = 'ERR';
-        alert('Error al cargar el estado general. Por favor, verifica la consola.');
     }
 }
 
@@ -394,7 +394,6 @@ async function fetchPendientes(targetListId = 'pendingList') {
         renderPendientes(targetListId);
     } catch (error) {
         console.error(`Error fetching pending pallets for ${targetListId}:`, error);
-        alert(`Error al cargar pallets pendientes. Por favor, verifica la consola.`);
         appState.pendingPallets = []; 
         renderPendientes(targetListId); 
     }
@@ -432,8 +431,7 @@ function renderPendientes(targetListId) {
             badgeContainer.innerHTML = `<span class="badge">${estadoText}</span>`;
         }
 
-        // *** Lógica Condicional para los Botones ***
-        if (targetListId === 'detailList') { // Si estamos en la solapa "Generar Tarea"
+        if (targetListId === 'detailList') {
             itemNode.dataset.palletEntradaId = pallet.PalletEntradaID;
             itemNode.dataset.cliente = pallet.Cliente;
             itemNode.dataset.disponible = pallet.DisponibleParaTareas;
@@ -448,9 +446,7 @@ function renderPendientes(targetListId) {
             if (badgeContainer) {
                 badgeContainer.appendChild(btnGenerar);
             }
-
         } 
-        // *** Fin de Lógica Condicional ***
 
         listElement.appendChild(itemNode);
     });
@@ -464,7 +460,6 @@ async function fetchTasks() {
         renderTasks();
     } catch (error) {
         console.error('Error fetching tasks:', error);
-        alert('Error al cargar tareas de descuento. Por favor, verifica la consola.');
         appState.tasks = []; 
         renderTasks(); 
     }
@@ -532,28 +527,20 @@ function renderTasks() {
 }
 
 // --- SECCIONES DE INTERACCIÓN ESPECÍFICA ---
-
 function showTaskGenSection(pallet) {
-    // --- VERIFICACIÓN CRÍTICA ---
     if (!pallet || !pallet.PalletEntradaID || !pallet.Cliente || typeof pallet.DisponibleParaTareas === 'undefined') {
         console.error("Error: Se intentó mostrar la sección de generación de tarea con datos de pallet inválidos.", pallet);
         alert("Error interno al seleccionar el pallet. Por favor, intenta de nuevo.");
         return; 
     }
    
-    appState.currentPalletForTask = pallet; // Guarda el pallet seleccionado
-
-    // Oculta la lista y muestra el formulario
+    appState.currentPalletForTask = pallet;
     $('#detailList').style.display = 'none';
     $('#taskGenSection').style.display = 'block';
-
     $('#currentPalletClient').textContent = pallet.Cliente;
-
     $('#taskCantidad').max = pallet.DisponibleParaTareas;
     $('#taskCantidad').value = pallet.DisponibleParaTareas; 
-
-    $('#taskPasillo').value = ''; // Mantenemos esto así si el pasillo no viene del pallet y debe ser ingresado por el usuario.
-
+    $('#taskPasillo').value = '';
     $('#taskGenInfo').textContent = `Pallet ID: ${pallet.PalletEntradaID}. Disponible para esta tarea: ${pallet.DisponibleParaTareas}`;
 }
 
@@ -593,54 +580,27 @@ function handleTaskButtonClick(event) {
 
     $('#discountSection').style.display = 'block';
     $('#currentTaskClient').textContent = `${cliente} (Pasillo: ${pasillo})`; 
-    
     $('#discountCantidad').max = cantidadPendiente; 
     $('#discountCantidad').value = cantidadPendiente; 
-
     $('#discountInfo').textContent = `Pendiente en tarea: ${cantidadPendiente}`;
 }
 
 function hideDiscountSection() {
     $('#discountSection').style.display = 'none';
     $('#formDiscount').reset(); 
-    // Limpiamos ambos estados para evitar confusiones
     appState.currentTaskToDiscount = null; 
     appState.currentPalletToDiscountDirectly = null;
 }
 
-// Muestra la sección para descontar directamente de un pallet (sin generar tarea previa)
-function showDiscountSectionForPallet(pallet) {
-    if (!pallet || !pallet.PalletEntradaID || !pallet.Cliente || typeof pallet.DisponibleParaTareas === 'undefined') {
-        console.error("Error: Se intentó mostrar la sección de descuento directo con datos de pallet inválidos.", pallet);
-        alert("Error interno al seleccionar el pallet para descontar. Por favor, intenta de nuevo.");
-        return; 
-    }
-
-    appState.currentPalletToDiscountDirectly = {
-        id: pallet.PalletEntradaID,
-        cliente: pallet.Cliente,
-        disponible: pallet.DisponibleParaTareas
-    };
-
-    $('#discountSection').style.display = 'block';
-    $('#currentTaskClient').textContent = `${pallet.Cliente} (Pallet ID: ${pallet.PalletEntradaID})`; 
-    
-    $('#discountCantidad').max = pallet.DisponibleParaTareas; 
-    $('#discountCantidad').value = pallet.DisponibleParaTareas; 
-
-    $('#discountInfo').textContent = `Pendiente en pallet: ${pallet.DisponibleParaTareas}`;
-}
-
-// Evento para el formulario de Descontar Pallet (Ventana 3)
+// Evento para el formulario de Descontar Pallet
 $('#formDiscount').addEventListener('submit', async e => {
     e.preventDefault();
     
-    // Verificamos si estamos descontando de una TAREA o DIRECTAMENTE de un PALLET
     let url;
     let requestBody;
     let mensajeExito = 'Pallet descontado.';
 
-    if (appState.currentTaskToDiscount) { // Si estamos descontando de una TAREA
+    if (appState.currentTaskToDiscount) {
         if (!appState.currentTaskToDiscount.id) {
             alert('No hay tarea seleccionada para descontar.');
             return;
@@ -651,12 +611,12 @@ $('#formDiscount').addEventListener('submit', async e => {
             cantidadADescontar: parseInt($('#discountCantidad').value.trim())
         };
         mensajeExito = 'Pallet descontado de la tarea.';
-    } else if (appState.currentPalletToDiscountDirectly) { // Si estamos descontando DIRECTAMENTE del PALLET
+    } else if (appState.currentPalletToDiscountDirectly) {
         if (!appState.currentPalletToDiscountDirectly.id) {
             alert('No hay pallet seleccionado para descontar directamente.');
             return;
         }
-        url = `${API_URL}/descontar-pallet-directo`; // Nueva ruta en el backend
+        url = `${API_URL}/descontar-pallet-directo`;
         requestBody = {
             palletEntradaId: appState.currentPalletToDiscountDirectly.id,
             cantidadADescontar: parseInt($('#discountCantidad').value.trim())
@@ -689,7 +649,6 @@ $('#formDiscount').addEventListener('submit', async e => {
 
         alert(`¡Éxito! ${result.message || mensajeExito}`);
         hideDiscountSection(); 
-
         fetchTasks(); 
         fetchPendientes('pendingList'); 
         fetchPendientes('detailList'); 
@@ -698,18 +657,15 @@ $('#formDiscount').addEventListener('submit', async e => {
         console.error('Error al descontar pallet:', error);
         alert(`Error al descontar pallet: ${error.message}`);
     } finally {
-        // Limpiamos el estado, independientemente de si hubo éxito o error
         appState.currentTaskToDiscount = null;
         appState.currentPalletToDiscountDirectly = null;
     }
 });
 
-
-// Evento para el formulario de Generar Tarea (Ventana 2)
+// Evento para el formulario de Generar Tarea
 $('#formTaskGen').addEventListener('submit', async e => {
     e.preventDefault();
 
-    // --- VERIFICACIÓN CRÍTICA ---
     if (!appState.currentPalletForTask || !appState.currentPalletForTask.PalletEntradaID || !appState.currentPalletForTask.Cliente) {
         console.error('Error: appState.currentPalletForTask está incompleto o no está definido.', appState.currentPalletForTask);
         alert('No se ha podido identificar el pallet para generar la tarea. Por favor, selecciona un pallet de la lista anterior.');
@@ -725,20 +681,11 @@ $('#formTaskGen').addEventListener('submit', async e => {
         alert('Por favor, ingresa una cantidad válida mayor a cero.'); 
         return; 
     }
-    // --- VALIDACIÓN DE PASILLO ---
+    
     if (!pasillo) { 
         alert('El campo Pasillo es requerido.'); 
         return; 
     }
-
-    // --- DEPURACIÓN: Imprime los datos que se intentan enviar ---
-    console.log("Intentando generar tarea con estos datos:", {
-        PalletEntradaID: appState.currentPalletForTask.PalletEntradaID, 
-        cliente: appState.currentPalletForTask.Cliente, 
-        cantidad: cantidad,
-        pasillo: pasillo
-    });
-    // --- FIN DEPURACIÓN ---
 
     try {
         const response = await fetch(`${API_URL}/tareas-descuento`, {
@@ -771,7 +718,6 @@ $('#formTaskGen').addEventListener('submit', async e => {
 });
 
 // --- LÓGICA DE NAVEGACIÓN Y EVENTOS GLOBALES ---
-
 document.querySelectorAll('nav button[data-target]').forEach(button => {
     button.addEventListener('click', () => {
         const targetId = button.dataset.target;
@@ -806,23 +752,87 @@ if (descargarExcelBtn) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const secciones = $$('.main-content > div');
-    secciones.forEach(seccion => {
-        seccion.style.display = 'none';
+// Inicializar la aplicación
+// Clave para almacenar la ventana seleccionada en localStorage
+const STORAGE_KEY = 'palletControl_selectedWindow';
+
+// --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
+function mostrarVentana(idVentana) {
+    // Ocultar todas las ventanas
+    const ventanas = $$('.ventana');
+    ventanas.forEach(ventana => {
+        ventana.classList.remove('visible');
+    });
+    
+    // Mostrar solo la ventana seleccionada
+    const ventanaAMostrar = $(`#${idVentana}`);
+    if (ventanaAMostrar) {
+        ventanaAMostrar.classList.add('visible');
+    }
+
+    // Actualizar botones activos
+    document.querySelectorAll('nav button[data-target]').forEach(button => {
+        if (button.dataset.target === idVentana) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
     });
 
-    mostrarVentana('ingreso-pallet');
+    // Guardar la selección en localStorage
+    localStorage.setItem(STORAGE_KEY, idVentana);
 
+    // Lógica para recargar datos según la ventana activa
+    if (idVentana === 'ingreso-pallet') {
+        fetchPendientes('pendingList');
+        hideTaskGenSection();
+        hideDiscountSection();
+    }
+
+    if (idVentana === 'generar-tarea') {
+        fetchPendientes('detailList');
+        hideTaskGenSection();
+        hideDiscountSection();
+    }
+    
+    if (idVentana === 'descontar-pallet') {
+        fetchTasks();
+        hideDiscountSection();
+    }
+}
+
+// Función para obtener la ventana guardada desde localStorage
+function obtenerVentanaGuardada() {
+    const ventanaGuardada = localStorage.getItem(STORAGE_KEY);
+    // Validar que la ventana guardada sea una de las opciones válidas
+    const ventanasValidas = ['ingreso-pallet', 'generar-tarea', 'descontar-pallet'];
+    return ventanasValidas.includes(ventanaGuardada) ? ventanaGuardada : 'ingreso-pallet';
+}
+
+// MODIFICAR LA INICIALIZACIÓN EN DOMContentLoaded:
+// Busca esta parte en tu código y reemplázala:
+document.addEventListener('DOMContentLoaded', () => {
+    // Ocultar todas las ventanas primero
+    const ventanas = $$('.ventana');
+    ventanas.forEach(ventana => {
+        ventana.classList.remove('visible');
+    });
+    
+    // Mostrar la ventana guardada o la de ingreso por defecto
+    const ventanaInicial = obtenerVentanaGuardada();
+    mostrarVentana(ventanaInicial);
+    
+    // Cargar datos iniciales
     fetchStatus();
-    fetchTasks(); 
-
+    fetchTasks();
+    
+    // Configurar fechas para el filtro de Excel
     const hoy = new Date();
     const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     
     const formatInputDate = (date) => {
         const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0'); 
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
     };
