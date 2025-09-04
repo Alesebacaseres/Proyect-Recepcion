@@ -850,6 +850,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fechaFinInput) {
         fechaFinInput.value = formatInputDate(hoy);
     }
+    // Refresca la página cada 1 minuto (60000 ms)
+    setInterval(() => {
+        window.location.reload();
+    }, 60000);
 });
 </script>
 </body>
