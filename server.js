@@ -2,8 +2,8 @@
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql'); // Asegúrate de que mssql esté en package.json
-//require('dotenv').config()
-const path = require('path')
+//require('dotenv').config();
+const path = require('path');
 // *** Importación de csv-stringify ***
 const { stringify } = require('csv-stringify');
 
@@ -68,32 +68,49 @@ async function connectToDatabase() {
 
 // --- Rutas de la API ---
 
+
 // Ruta para obtener el estado general (KPIs)
 app.get('/api/status', async (req, res) => {
     if (!pool || !isDbConnected) {
         return res.status(503).send('Service Unavailable: Database pool not ready.');
     }
     try {
-        // Cálculo de Pendientes: Total Ingresados - Total Descontados
+        // Cálculo de Total Ingresados
         const totalIngresadosResult = await pool.request().query('SELECT ISNULL(SUM(Cantidad), 0) AS TotalIngresado FROM PalletsEntrada');
         const totalIngresados = totalIngresadosResult.recordset[0]?.TotalIngresado || 0;
 
-        const totalDescargadosResult = await pool.request().query('SELECT ISNULL(SUM(CantidadDescontada), 0) AS TotalDescontado FROM PalletsDescontados');
-        const totalDescargados = totalDescargadosResult.recordset[0]?.TotalDescontado || 0; 
+        // Cálculo de Total Descontados Directos (donde TareaDescuentoID es NULL)
+        const totalDescDirectosResult = await pool.request().query('SELECT ISNULL(SUM(CantidadDescontada), 0) AS TotalDescontadoDirecto FROM PalletsDescontados WHERE TareaDescuentoID IS NULL');
+        const totalDescDirectos = totalDescDirectosResult.recordset[0]?.TotalDescontadoDirecto || 0;
 
-        const totalPendientes = totalIngresados - totalDescargados;
+        // Cálculo de Total en Tareas (sumando todas las cantidades solicitadas en todas las tareas, independientemente del estado)
+        const totalEnTareasResult = await pool.request().query('SELECT ISNULL(SUM(CantidadSolicitada), 0) AS TotalEnTareas FROM TareasDescuento');
+        const totalEnTareas = totalEnTareasResult.recordset[0]?.TotalEnTareas || 0;
 
-        // Última acción de Ingreso
+        // Cálculo de Total en Tareas Canceladas (para el KPI "Cancelados")
+        const totalTareasCanceladasResult = await pool.request().query('SELECT ISNULL(SUM(CantidadSolicitada), 0) AS TotalEnTareasCanceladas FROM TareasDescuento WHERE Estado = \'Cancelada\'');
+        const totalTareasCanceladas = totalTareasCanceladasResult.recordset[0]?.TotalEnTareasCanceladas || 0;
+        
+        // Cálculo de Total en Tareas Completadas (para el KPI "Procesados")
+        const totalTareasCompletadasResult = await pool.request().query('SELECT ISNULL(SUM(CantidadSolicitada), 0) AS TotalEnTareasCompletadas FROM TareasDescuento WHERE Estado = \'Completada\'');
+        const totalTareasCompletadas = totalTareasCompletadasResult.recordset[0]?.TotalEnTareasCompletadas || 0;
+
+        // Definición de los KPIs actualizados
+        const pendientesReales = totalIngresados - totalDescDirectos - totalEnTareas; // Pallets ingresados que NUNCA han sido tocados
+        const cancelados = totalTareasCanceladas;                                     // Suma de cantidades de tareas marcadas como 'Cancelada'
+        const procesados = totalDescDirectos + totalTareasCompletadas;                // Suma de descuentos directos + cantidades de tareas 'Completada'
+
+        // Cálculo de Última acción (sin cambios por ahora)
         const lastIngresoResult = await pool.request().query(`
             SELECT TOP 1 Cliente, Cantidad, FechaHoraIngreso
             FROM PalletsEntrada
             ORDER BY FechaHoraIngreso DESC
         `);
-        // Última acción de Descuento 
         const lastDescuentoResult = await pool.request().query(`
             SELECT TOP 1 T.Cliente, PD.CantidadDescontada, PD.FechaHoraDescuento
             FROM PalletsDescontados PD
             JOIN TareasDescuento T ON PD.TareaDescuentoID = T.ID
+            WHERE PD.TareaDescuentoID IS NOT NULL -- Consideramos la última acción relevante como un descuento de tarea
             ORDER BY PD.FechaHoraDescuento DESC
         `);
 
@@ -119,8 +136,9 @@ app.get('/api/status', async (req, res) => {
         }
 
         res.json({
-            pendientes: totalPendientes,
-            descargados: totalDescargados,
+            pendientes: pendientesReales, // Ahora refleja solo lo que NUNCA ha sido tocado
+            cancelados: cancelados,       // Cantidad total solicitada en tareas canceladas
+            descargados: procesados,      // Suma de descuentos directos + tareas completadas
             lastAction: ultimaAccion
         });
     } catch (err) {
@@ -355,7 +373,7 @@ app.post('/api/descontar-pallet', async (req, res) => {
             .input('cantidadDescontada', sql.Int, cantidadADescontar)
             .input('usuario', sql.NVarChar, 'Sistema') 
             .query(`
-                INSERT INTO PalletsDescontados (TareaDescuentoID, Cliente, CantidadDescontada, FechaHoraDescuento, UsuarioDescuento)
+                INSERT INTO PalletsDescontados (TareaDescuentoID, Cliente, CantidadDescontada, FechaHoraDescuento, UsuarioDescuento) 
                 VALUES (@tareaId, @cliente, @cantidadDescontada, GETDATE(), @usuario);
                 SELECT SCOPE_IDENTITY() AS Id;
             `);
@@ -413,12 +431,32 @@ app.delete('/api/tareas-descuento/:id', async (req, res) => {
             return res.status(404).json({ message: 'Tarea no encontrada o ya procesada.' });
         }
 
+        // Registrar movimiento de CANCELACION_TAREA
+        // Primero obtenemos los datos de la tarea para registrarlos en el movimiento
+        const tareaDataResult = await transaction.request()
+            .input('taskId', sql.Int, taskIdToCancel)
+            .query('SELECT Cliente, CantidadSolicitada, Pasillo FROM TareasDescuento WHERE ID = @taskId');
+        
+        let clienteMov = 'N/A';
+        let cantidadMov = 0;
+        let pasilloMov = null;
+
+        if (tareaDataResult.recordset && tareaDataResult.recordset.length > 0) {
+            const tareaData = tareaDataResult.recordset[0];
+            clienteMov = tareaData.Cliente;
+            cantidadMov = tareaData.CantidadSolicitada;
+            pasilloMov = tareaData.Pasillo;
+        }
+
         await transaction.request()
             .input('taskId', sql.Int, taskIdToCancel)
+            .input('cliente', sql.NVarChar, clienteMov)
+            .input('cantidad', sql.Int, cantidadMov)
+            .input('pasillo', sql.NVarChar, pasilloMov)
             .input('usuario', sql.NVarChar, 'Sistema') 
             .query(`
-                INSERT INTO Movimientos (TipoMovimiento, TareaDescuentoID, Cliente, Cantidad, FechaHora, Usuario)
-                VALUES ('CANCELACION_TAREA', @taskId, 'N/A', 0, GETDATE(), @usuario);
+                INSERT INTO Movimientos (TipoMovimiento, TareaDescuentoID, Cliente, Cantidad, Pasillo, FechaHora, Usuario)
+                VALUES ('CANCELACION_TAREA', @taskId, @cliente, @cantidad, @pasillo, GETDATE(), @usuario);
             `);
 
         await transaction.commit();
