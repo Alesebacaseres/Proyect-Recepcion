@@ -82,15 +82,15 @@ nav { /* Selecciona la navegación directamente si solo hay una nav principal */
  /* Media query para pantalla celular */
   @media (max-width: 600px) {
     #filtroExcel {
-      flex-direction: column;       
+      flex-direction: column;      
       align-items: flex-start;      
-      gap: 8px;                     
-      margin-left: 0;               
+      gap: 8px;                    
+      margin-left: 0;              
     }
     #filtroExcel input,
     #filtroExcel button {
       width: 100%;                  
-      box-sizing: border-box;       
+      box-sizing: border-box;      
     }
     nav {
         flex-direction: column;
@@ -117,10 +117,13 @@ nav button.active {
 </head>
 <body>
 <div class="wrap">
-    <h1>Control de pallets</h1>
+    <h1>Control de Pallets</h1>
     <div class="kpi">
         <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
-        <div class="box"><div class="small">Descontados</div><div id="kpiDone">0</div></div>
+        <!-- NUEVO KPI PARA CANCELADOS -->
+        <div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>
+        <!-- FIN NUEVO KPI -->
+        <div class="box"><div class="small">Procesados</div><div id="kpiDone">0</div></div> <!-- Renombrado para mayor claridad -->
         <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
     </div>
 
@@ -130,16 +133,20 @@ nav button.active {
         <button data-target="ingreso-pallet" class="active">Ingreso</button>
         <button data-target="generar-tarea">Generar Tarea</button>
         <button data-target="descontar-pallet">Descontar Pallet</button>
-        </nav>
-        <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
-        <div id="filtroExcel" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+    </nav>
+    
+    <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
+    <div id="filtroExcel" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
         <label for="fechaInicioExcel" class="muted" style="font-size: 14px;">Desde:</label>
         <input type="date" id="fechaInicioExcel" style="width: auto; padding: 6px 10px;"/>
-         <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
-         <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
-         <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
-        </div>
-        <!-- *** FIN NUEVA SECCIÓN *** -->
+        <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
+        <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
+        <!-- BOTÓN "HOY" AÑADIDO AQUÍ -->
+        <button type="button" id="btnHoyFechaDescarga" class="ghost">Hoy</button>
+        <!-- --- -->
+        <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
+    </div>
+    <!-- *** FIN NUEVA SECCIÓN *** -->
 
     <!-- Contenedor principal para las diferentes pantallas/ventanas -->
     <div class="main-content">
@@ -355,6 +362,9 @@ function mostrarVentana(idVentana) {
         }
     });
 
+    // Guardar la selección en localStorage
+    localStorage.setItem(STORAGE_KEY, idVentana);
+
     // Lógica para recargar datos según la ventana activa
     if (idVentana === 'ingreso-pallet') {
         fetchPendientes('pendingList');
@@ -381,11 +391,14 @@ async function fetchStatus() {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         $('#kpiPend').textContent = data.pendientes;
-        $('#kpiDone').textContent = data.descargados;
+        // Actualizado para mostrar el nuevo KPI de cancelados
+        $('#kpiCancel').textContent = data.cancelados;
+        $('#kpiDone').textContent = data.descargados; // Renombrado de 'descargados' a 'procesados'
         $('#kpiLast').textContent = data.lastAction;
     } catch (error) {
         console.error('Error fetching status:', error);
         $('#kpiPend').textContent = 'ERR';
+        $('#kpiCancel').textContent = 'ERR'; // KPI de cancelados
         $('#kpiDone').textContent = 'ERR';
         $('#kpiLast').textContent = 'ERR';
     }
@@ -725,6 +738,53 @@ $('#formTaskGen').addEventListener('submit', async e => {
 });
 
 // --- LÓGICA DE NAVEGACIÓN Y EVENTOS GLOBALES ---
+// Clave para almacenar la ventana seleccionada en localStorage
+const STORAGE_KEY = 'palletControl_selectedWindow';
+
+// Función para obtener la ventana guardada desde localStorage
+function obtenerVentanaGuardada() {
+    const ventanaGuardada = localStorage.getItem(STORAGE_KEY);
+    // Validar que la ventana guardada sea una de las opciones válidas
+    const ventanasValidas = ['ingreso-pallet', 'generar-tarea', 'descontar-pallet'];
+    return ventanasValidas.includes(ventanaGuardada) ? ventanaGuardada : 'ingreso-pallet';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Ocultar todas las ventanas primero
+    const ventanas = $$('.ventana');
+    ventanas.forEach(ventana => {
+        ventana.classList.remove('visible');
+    });
+    
+    // Mostrar la ventana guardada o la de ingreso por defecto
+    const ventanaInicial = obtenerVentanaGuardada();
+    mostrarVentana(ventanaInicial);
+    
+    // Cargar datos iniciales
+    fetchStatus();
+    fetchTasks();
+    fetchPendientes('pendingList'); // Cargar la lista de la primera ventana
+
+    // Configurar fechas para el filtro de Excel
+    configurarFechasDescarga(); 
+
+    // Refrescar datos cada 1 minuto
+    setInterval(() => {
+        fetchStatus();
+        fetchTasks();
+        // Solo refrescar la lista activa para no saturar
+        const ventanaActiva = obtenerVentanaGuardada();
+        if (ventanaActiva === 'ingreso-pallet') {
+            fetchPendientes('pendingList');
+        } else if (ventanaActiva === 'generar-tarea') {
+            fetchPendientes('detailList');
+        } else if (ventanaActiva === 'descontar-pallet') {
+            fetchTasks();
+        }
+    }, 60000);
+});
+
+// Eventos para los botones de navegación
 document.querySelectorAll('nav button[data-target]').forEach(button => {
     button.addEventListener('click', () => {
         const targetId = button.dataset.target;
@@ -732,10 +792,7 @@ document.querySelectorAll('nav button[data-target]').forEach(button => {
     });
 });
 
-const descargarExcelBtn = document.getElementById('descargarExcelBtn');
-const fechaInicioInput = document.getElementById('fechaInicioExcel');
-const fechaFinInput = document.getElementById('fechaFinExcel');
-
+// Evento para el botón de descargar Excel
 if (descargarExcelBtn) {
     descargarExcelBtn.addEventListener('click', () => {
         const fechaInicio = fechaInicioInput.value; 
@@ -758,106 +815,6 @@ if (descargarExcelBtn) {
         window.location.href = url;
     });
 }
-
-// Inicializar la aplicación
-// Clave para almacenar la ventana seleccionada en localStorage
-const STORAGE_KEY = 'palletControl_selectedWindow';
-
-// --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
-function mostrarVentana(idVentana) {
-    // Ocultar todas las ventanas
-    const ventanas = $$('.ventana');
-    ventanas.forEach(ventana => {
-        ventana.classList.remove('visible');
-    });
-    
-    // Mostrar solo la ventana seleccionada
-    const ventanaAMostrar = $(`#${idVentana}`);
-    if (ventanaAMostrar) {
-        ventanaAMostrar.classList.add('visible');
-    }
-
-    // Actualizar botones activos
-    document.querySelectorAll('nav button[data-target]').forEach(button => {
-        if (button.dataset.target === idVentana) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-    });
-
-    // Guardar la selección en localStorage
-    localStorage.setItem(STORAGE_KEY, idVentana);
-
-    // Lógica para recargar datos según la ventana activa
-    if (idVentana === 'ingreso-pallet') {
-        fetchPendientes('pendingList');
-        hideTaskGenSection();
-        hideDiscountSection();
-    }
-
-    if (idVentana === 'generar-tarea') {
-        fetchPendientes('detailList');
-        hideTaskGenSection();
-        hideDiscountSection();
-    }
-    
-    if (idVentana === 'descontar-pallet') {
-        fetchTasks();
-        hideDiscountSection();
-    }
-}
-
-// Función para obtener la ventana guardada desde localStorage
-function obtenerVentanaGuardada() {
-    const ventanaGuardada = localStorage.getItem(STORAGE_KEY);
-    // Validar que la ventana guardada sea una de las opciones válidas
-    const ventanasValidas = ['ingreso-pallet', 'generar-tarea', 'descontar-pallet'];
-    return ventanasValidas.includes(ventanaGuardada) ? ventanaGuardada : 'ingreso-pallet';
-}
-
-// MODIFICAR LA INICIALIZACIÓN EN DOMContentLoaded:
-// Busca esta parte en tu código y reemplázala:
-document.addEventListener('DOMContentLoaded', () => {
-    // Ocultar todas las ventanas primero
-    const ventanas = $$('.ventana');
-    ventanas.forEach(ventana => {
-        ventana.classList.remove('visible');
-    });
-    
-    // Mostrar la ventana guardada o la de ingreso por defecto
-    const ventanaInicial = obtenerVentanaGuardada();
-    mostrarVentana(ventanaInicial);
-    
-    // Cargar datos iniciales
-    fetchStatus();
-    fetchTasks();
-    
-    // Configurar fechas para el filtro de Excel
-    const hoy = new Date();
-    const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    
-    const formatInputDate = (date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
-
-    if (fechaInicioInput) {
-        fechaInicioInput.value = formatInputDate(primerDiaDelMes);
-    }
-    if (fechaFinInput) {
-        fechaFinInput.value = formatInputDate(hoy);
-    }
-    //Refrescar datos cada 1 minuto
-    setInterval(() => {
-        fetchStatus();
-        fetchTasks();
-        fetchPendientes('pendingList');
-        fetchPendientes('detailList');
-    }, 60000);
-});
 </script>
 </body>
 </html>
