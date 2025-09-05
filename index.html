@@ -898,41 +898,56 @@ const STORAGE_KEY = 'palletControl_selectedWindow';
 // Función para obtener la ventana guardada desde localStorage
 function obtenerVentanaGuardada() {
     const ventanaGuardada = localStorage.getItem(STORAGE_KEY);
-    // Validar que la ventana guardada sea una de las opciones válidas
     const ventanasValidas = ['ingreso-pallet', 'generar-tarea', 'descontar-pallet'];
     return ventanasValidas.includes(ventanaGuardada) ? ventanaGuardada : 'ingreso-pallet';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Ocultar todas las ventanas primero
+// Función para mostrar una ventana y ocultar las demás
+function mostrarVentana(nombreVentana) {
     const ventanas = $$('.ventana');
-    ventanas.forEach(ventana => {
-        ventana.classList.remove('visible');
-    });
-    
-    // Mostrar la ventana guardada o la de ingreso por defecto
+    ventanas.forEach(ventana => ventana.classList.remove('visible'));
+
+    const ventana = document.getElementById(nombreVentana);
+    if (ventana) {
+        ventana.classList.add('visible');
+        localStorage.setItem(STORAGE_KEY, nombreVentana);
+    }
+}
+
+// Función para refrescar solo la ventana activa (si no es descontar-pallet)
+function refrescarDatosVentana(ventanaActiva) {
+    if (ventanaActiva === 'ingreso-pallet') {
+        fetchPendientes('pendingList');
+    } else if (ventanaActiva === 'generar-tarea') {
+        fetchPendientes('detailList');
+    } else if (ventanaActiva === 'descontar-pallet') {
+        // Recargar toda la página si estamos en descontar-pallet
+        location.reload();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Ocultar todas las ventanas y mostrar la inicial
     const ventanaInicial = obtenerVentanaGuardada();
     mostrarVentana(ventanaInicial);
-    
+
     // Cargar datos iniciales
     fetchStatus();
     fetchTasks();
-    fetchPendientes('pendingList'); // Cargar la lista de la primera ventana
+    fetchPendientes('pendingList');
+    configurarFechasDescarga();
 
-    // Configurar fechas para el filtro de Excel
-    configurarFechasDescarga(); 
-
-   // Refrescar datos cada 1 minuto
-   setInterval(() => {
-    fetchStatus();
-    const ventanaActiva = obtenerVentanaGuardada();
-    if (ventanaActiva === 'descontar-pallet') {
-        fetchTasks();
-    }
-    /*if (refrescarPorVentana[ventanaActiva] && ventanaActiva !== 'descontar-pallet') {
-        refrescarPorVentana[ventanaActiva]();
-    }*/
-}, 60000);
+    // Refrescar datos cada 60 segundos
+    setInterval(() => {
+        const ventanaActiva = obtenerVentanaGuardada();
+        if (ventanaActiva === 'descontar-pallet') {
+            location.reload();
+        } else {
+            fetchStatus();
+            fetchTasks();
+            refrescarDatosVentana(ventanaActiva);
+        }
+    }, 60000);
 });
 
 // Eventos para los botones de navegación
