@@ -923,21 +923,15 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarFechasDescarga(); 
 
    // Refrescar datos cada 1 minuto
-setInterval(async () => {
-    try {
-        await fetchStatus();
-
-        const ventanaActiva = obtenerVentanaGuardada();
-        if (ventanaActiva === 'ingreso-pallet') {
-            await fetchPendientes('pendingList');
-        } else if (ventanaActiva === 'generar-tarea') {
-            await fetchPendientes('detailList');
-        } else if (ventanaActiva === 'descontar-pallet') {
-            await fetchTasks();
-        }
-    } catch (err) {
-        console.error("Error al refrescar datos:", err);
+   setInterval(() => {
+    fetchStatus();
+    const ventanaActiva = obtenerVentanaGuardada();
+    if (ventanaActiva === 'descontar-pallet') {
+        fetchTasks();
     }
+    /*if (refrescarPorVentana[ventanaActiva] && ventanaActiva !== 'descontar-pallet') {
+        refrescarPorVentana[ventanaActiva]();
+    }*/
 }, 60000);
 });
 
