@@ -353,6 +353,33 @@ let appState = {
     currentPalletToDiscountDirectly: null,
     currentPalletForTask: null
 };
+//LocalStorage "En proceso"//
+
+function getProcesos() {
+  return JSON.parse(localStorage.getItem(STORAGE_PROCESO)) || [];
+}
+
+function saveProcesos(procesos) {
+  localStorage.setItem(STORAGE_PROCESO, JSON.stringify(procesos));
+}
+
+function marcarEnProceso(taskId) {
+  let procesos = getProcesos();
+  if (!procesos.includes(taskId)) {
+    procesos.push(taskId);
+    saveProcesos(procesos);
+  }
+}
+
+function estaEnProceso(taskId) {
+  return getProcesos().includes(taskId);
+}
+
+function finalizarProceso(taskId) {
+  let procesos = getProcesos().filter(id => id !== taskId);
+  saveProcesos(procesos);
+}
+
 
 // --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
 function mostrarVentana(idVentana) {
@@ -513,6 +540,13 @@ function renderTasks() {
         const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
         $('.client', taskNode).textContent = `${tarea.Cliente} (Pasillo: ${tarea.Pasillo})`;
         $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar}`;
+         // Mostrar etiqueta "En proceso" si está marcada en localStorage
+        if (estaEnProceso(tarea.ID)) {
+            const badge = document.createElement('span');
+            badge.textContent = "En proceso";
+            badge.className = "badge warn"; //
+            taskNode.querySelector('.cantidad').appendChild(badge);
+        }
 
         const btnTask = taskNode.querySelector('.btnTask'); 
         const btnCancel = taskNode.querySelector('.item > div:last-child > button:last-child'); 
@@ -545,6 +579,8 @@ function renderTasks() {
                     }
 
                     alert(`¡Éxito! ${result.message || 'Tarea cancelada.'}`);
+
+                    finalizarProceso(tarea.ID);
                     
                     fetchTasks(); 
                     fetchPendientes('pendingList'); 
@@ -627,6 +663,36 @@ function hideDiscountSection() {
     appState.currentPalletToDiscountDirectly = null;
 }
 
+
+
+// LocalStorage: manejo de "En proceso" conectar  a la base de datos este estado
+
+const STORAGE_PROCESO = "tareasEnProceso";
+
+function getProcesos() {
+  return JSON.parse(localStorage.getItem(STORAGE_PROCESO)) || [];
+}
+
+function saveProcesos(procesos) {
+  localStorage.setItem(STORAGE_PROCESO, JSON.stringify(procesos));
+}
+
+function marcarEnProceso(taskId) {
+  let procesos = getProcesos();
+  if (!procesos.includes(taskId)) {
+    procesos.push(taskId);
+    saveProcesos(procesos);
+  }
+}
+
+function estaEnProceso(taskId) {
+  return getProcesos().includes(taskId);
+}
+
+function finalizarProceso(taskId) {
+  let procesos = getProcesos().filter(id => id !== taskId);
+  saveProcesos(procesos);
+}
 // Evento para el formulario de Descontar Pallet
 $('#formDiscount').addEventListener('submit', async e => {
     e.preventDefault();
@@ -645,6 +711,7 @@ $('#formDiscount').addEventListener('submit', async e => {
             tareaId: appState.currentTaskToDiscount.id,
             cantidadADescontar: parseInt($('#discountCantidad').value.trim())
         };
+        currentTaskId = appState.currentTaskToDiscount.id; //guardamos ID 
         mensajeExito = 'Pallet descontado de la tarea.';
     } else if (appState.currentPalletToDiscountDirectly) {
         if (!appState.currentPalletToDiscountDirectly.id) {
@@ -680,6 +747,10 @@ $('#formDiscount').addEventListener('submit', async e => {
 
         if (!response.ok) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        // Si es una tarea y se descontó parcialmente, marcamos "En proceso" conectar a la base de datos este estado
+        if (currentTaskId && cantidadADescontar > 0) {
+            marcarEnProceso(currentTaskId);
         }
 
         alert(`¡Éxito! ${result.message || mensajeExito}`);
