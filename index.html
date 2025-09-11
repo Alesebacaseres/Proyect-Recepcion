@@ -879,7 +879,7 @@ document.querySelectorAll('nav button[data-target]').forEach(button => {
 });
 
 // Evento para el botón de descargar Excel
-if (descargarExcelBtn) {
+/*if (descargarExcelBtn) {
     descargarExcelBtn.addEventListener('click', () => {
         const fechaInicio = fechaInicioInput.value; 
         const fechaFin = fechaFinInput.value;     
@@ -900,7 +900,51 @@ if (descargarExcelBtn) {
         
         window.location.href = url;
     });
+}*/
+if (descargarExcelBtn) {
+    descargarExcelBtn.addEventListener('click', async () => {
+        const fechaInicio = fechaInicioInput.value; 
+        const fechaFin = fechaFinInput.value;     
+
+        // Construir URL con parámetros
+        let url = '/descargar-movimientos';
+        const params = [];
+
+        if (fechaInicio) params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
+        if (fechaFin) params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
+
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        try {
+            // Llamada al servidor para obtener el archivo
+            const response = await fetch(url);
+            
+            if (!response.ok) throw new Error('Error al descargar el archivo');
+
+            // Obtener los datos como Blob
+            const blob = await response.blob();
+
+            // Crear un enlace temporal para descargar
+            const link = document.createElement('a');
+            const urlBlob = window.URL.createObjectURL(blob);
+            link.href = urlBlob;
+
+            // Nombre del archivo (puedes personalizarlo)
+            link.download = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.xlsx`;
+
+            // Simular click en el enlace
+            link.click();
+
+            // Liberar el objeto URL
+            window.URL.revokeObjectURL(urlBlob);
+
+        } catch (error) {
+            console.error(error);
+            alert('No se pudo descargar el archivo. Intenta nuevamente.');
+        }
+    });
 }
+
 </script>
 </body>
 </html>
