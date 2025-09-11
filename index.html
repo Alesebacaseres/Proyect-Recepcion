@@ -903,37 +903,68 @@ document.querySelectorAll('nav button[data-target]').forEach(button => {
 }*/
 // Evento para el botón de descargar Excel
 // Seleccionamos el botón
+// Selección de elementos
 const descargarExcelBtn = document.getElementById('descargarExcelBtn');
-
-// Seleccionamos los inputs de fecha
+const btnHoyFechaDescarga = document.getElementById('btnHoyFechaDescarga');
 const fechaInicioInput = document.getElementById('fechaInicio');
 const fechaFinInput = document.getElementById('fechaFin');
 
+// Función para descargar Excel
+async function descargarExcel(fechaInicio, fechaFin) {
+    let url = '/descargar-movimientos';
+    const params = [];
+    if (fechaInicio) params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
+    if (fechaFin) params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Error al descargar el archivo');
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        const urlBlob = window.URL.createObjectURL(blob);
+        link.href = urlBlob;
+        link.download = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.xlsx`;
+        link.click();
+        window.URL.revokeObjectURL(urlBlob);
+    } catch (error) {
+        console.error(error);
+        alert('No se pudo descargar el archivo. Intenta nuevamente.');
+    }
+}
+
+// Botón para descargar según fechas seleccionadas
 if (descargarExcelBtn) {
-    descargarExcelBtn.addEventListener('click', async () => {
+    descargarExcelBtn.addEventListener('click', () => {
         const fechaInicio = fechaInicioInput.value; 
-        const fechaFin = fechaFinInput.value;     
+        const fechaFin = fechaFinInput.value;
+        descargarExcel(fechaInicio, fechaFin);
+    });
+}
 
-        let url = '/descargar-movimientos';
-        const params = [];
-        if (fechaInicio) params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
-        if (fechaFin) params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
-        if (params.length > 0) url += `?${params.join('&')}`;
+// Botón para descargar automáticamente el rango de ayer-hoy-mañana
+if (btnHoyFechaDescarga) {
+    btnHoyFechaDescarga.addEventListener('click', () => {
+        const hoy = new Date();
+        
+        // Fecha de inicio = ayer
+        const inicio = new Date(hoy);
+        inicio.setDate(hoy.getDate() - 1);
+        
+        // Fecha de fin = mañana
+        const fin = new Date(hoy);
+        fin.setDate(hoy.getDate() + 1);
 
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Error al descargar el archivo');
-            const blob = await response.blob();
-            const link = document.createElement('a');
-            const urlBlob = window.URL.createObjectURL(blob);
-            link.href = urlBlob;
-            link.download = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.xlsx`;
-            link.click();
-            window.URL.revokeObjectURL(urlBlob);
-        } catch (error) {
-            console.error(error);
-            alert('No se pudo descargar el archivo. Intenta nuevamente.');
-        }
+        // Convertir a formato YYYY-MM-DD
+        const fechaInicio = inicio.toISOString().split('T')[0];
+        const fechaFin = fin.toISOString().split('T')[0];
+
+        // Actualizar inputs (opcional)
+        fechaInicioInput.value = fechaInicio;
+        fechaFinInput.value = fechaFin;
+
+        // Descargar Excel
+        descargarExcel(fechaInicio, fechaFin);
     });
 }
 </script>
