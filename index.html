@@ -214,6 +214,20 @@
                     <form id="formTaskGen" class="row" autocomplete="off">
                         <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
                         <input id="taskPasillo" placeholder="Pasillo" required />
+                        <!-- se agrego este selec para elegir la prioridad de la tarea -->
+                        <select id="prioridad" required>
+                           <option value="" disabled selected>Seleccione la prioridad</option>
+                           <option value="prioridad 1">prioridad 1</option>
+                           <option value="prioridad 2">prioridad 2</option>
+                           <option value="prioridad 3">prioridad 3</option>
+                        </select>
+                      <!-- se agrego este selec para elegir por que lado del pasillo iingresar los pallet-->
+                      <select id="ladoDEIngreso" required>
+                        <option value="" disabled selected>Seleccione el lado de ingreso</option>
+                        <option value="lado delantero">lado delantero</option>
+                        <option value="lado trasero">lado trasero</option>
+                      </select>
+
                         <button class="primary" type="submit">Continuar</button>
                         <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button> <!-- Botón Cancelar -->
                     </form>
