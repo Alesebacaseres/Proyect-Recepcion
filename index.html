@@ -1017,6 +1017,19 @@ if (btnHoyFechaDescarga) {
 
         descargarExcel(fechaInicioSrv, fechaFinSrv);
     });
+
+    function refrescarSiDescontar() {
+    const ventanaActiva = obtenerVentanaGuardada();
+    if (ventanaActiva === 'descontar-pallet') {
+        // Recargar toda la página cada 1 minuto (60000 ms)
+        setInterval(() => {
+            location.reload();
+        }, 60000);
+    }
+}
+
+// Llamar al final del script
+refrescarSiDescontar();
 }
 </script>
 </body>
