@@ -862,7 +862,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Refrescar datos cada 1 minuto
     setInterval(() => {
-        fetchStatus();
         fetchTasks();
         // Solo refrescar la lista activa para no saturar
         const ventanaActiva = obtenerVentanaGuardada();
@@ -871,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (ventanaActiva === 'generar-tarea') {
             fetchPendientes('detailList');
         } else if (ventanaActiva === 'descontar-pallet') {
-            fetchTasks();
+            fetchPendientes('detailList');
         }
     }, 60000);
 });
