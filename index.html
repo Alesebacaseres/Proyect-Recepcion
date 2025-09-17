@@ -908,44 +908,29 @@ document.querySelectorAll('nav button[data-target]').forEach(button => {
 }*/
 
 // Evento para el botón de descargar Excel
+// --- DESCARGA DE EXCEL ---
 const descargarExcelBtn = document.getElementById('descargarExcelBtn');
 const btnHoyFechaDescarga = document.getElementById('btnHoyFechaDescarga');
 const fechaInicioInput = document.getElementById('fechaInicio');
 const fechaFinInput = document.getElementById('fechaFin');
 
-function formatearParaInput(fecha) {
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const anio = fecha.getFullYear();
-    return `${dia}/${mes}/${anio}`; // para mostrar en inputs
-}
-
-function formatearParaServidor(fecha) {
-    return fecha.toISOString().split('T')[0]; // YYYY-MM-DD
-}
-
 function parsearInputADate(valor) {
     const partes = valor.split('/');
     if (partes.length !== 3) return null;
-
     const [dia, mes, anio] = partes.map(Number);
-    if (!dia || !mes || !anio) return null;
-
     const fecha = new Date(anio, mes - 1, dia);
-
-    // Validar que sea una fecha real
-    if (
-        fecha.getFullYear() !== anio ||
-        fecha.getMonth() !== mes - 1 ||
-        fecha.getDate() !== dia
-    ) {
-        return null;
-    }
-
+    if (fecha.getFullYear() !== anio || fecha.getMonth() !== mes - 1 || fecha.getDate() !== dia) return null;
     return fecha;
 }
 
-//Función para descargar Excel
+function formatearParaInput(fecha) {
+    return `${String(fecha.getDate()).padStart(2,'0')}/${String(fecha.getMonth()+1).padStart(2,'0')}/${fecha.getFullYear()}`;
+}
+
+function formatearParaServidor(fecha) {
+    return fecha.toISOString().split('T')[0];
+}
+
 async function descargarExcel(fechaInicio, fechaFin) {
     let url = '/descargar-movimientos';
     const params = [];
@@ -958,79 +943,43 @@ async function descargarExcel(fechaInicio, fechaFin) {
         if (!response.ok) throw new Error('Error al descargar el archivo');
         const blob = await response.blob();
         const link = document.createElement('a');
-        const urlBlob = window.URL.createObjectURL(blob);
-        link.href = urlBlob;
+        link.href = window.URL.createObjectURL(blob);
         link.download = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.xlsx`;
         link.click();
-        window.URL.revokeObjectURL(urlBlob);
-    } catch (error) {
-        console.error(error);
-        alert('No se pudo descargar el archivo. Intenta nuevamente.');
+    } catch(e) {
+        console.error('Error al descargar Excel:', e);
+        alert('Error al descargar Excel');
     }
 }
 
-//  Botón para descargar fechas seleccionadas
 if (descargarExcelBtn) {
     descargarExcelBtn.addEventListener('click', () => {
-        let fechaInicioSrv = null;
-        let fechaFinSrv = null;
-
-        if (fechaInicioInput.value) {
-            const inicioDate = parsearInputADate(fechaInicioInput.value);
-            if (!inicioDate) {
-                alert("La fecha de inicio no es válida. Usa formato DD/MM/YYYY.");
-                return;
-            }
-            fechaInicioSrv = formatearParaServidor(inicioDate);
-        }
-        if (fechaFinInput.value) {
-            const finDate = parsearInputADate(fechaFinInput.value);
-            if (!finDate) {
-                alert("La fecha de fin no es válida. Usa formato DD/MM/YYYY.");
-                return;
-            }
-            fechaFinSrv = formatearParaServidor(finDate);
-        }
-
-        descargarExcel(fechaInicioSrv, fechaFinSrv);
+        const inicio = fechaInicioInput.value;
+        const fin = fechaFinInput.value;
+        descargarExcel(inicio, fin);
     });
 }
 
-// Botón Hoy//
 if (btnHoyFechaDescarga) {
     btnHoyFechaDescarga.addEventListener('click', () => {
         const hoy = new Date();
-
-        const inicio = new Date(hoy);
-        inicio.setDate(hoy.getDate() - 1);
-
-        const fin = new Date(hoy);
-        fin.setDate(hoy.getDate() + 1);
-
-        // Mostrar en inputs (DD/MM/YYYY)
-        fechaInicioInput.value = formatearParaInput(inicio);
-        fechaFinInput.value = formatearParaInput(fin);
-
-        // Enviar al servidor (YYYY-MM-DD)
-        const fechaInicioSrv = formatearParaServidor(inicio);
-        const fechaFinSrv = formatearParaServidor(fin);
-
-        descargarExcel(fechaInicioSrv, fechaFinSrv);
+        const ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
+        const manana = new Date(); manana.setDate(hoy.getDate() + 1);
+        fechaInicioInput.value = formatearParaInput(ayer);
+        fechaFinInput.value = formatearParaInput(manana);
     });
-
-    function refrescarSiDescontar() {
-    const ventanaActiva = obtenerVentanaGuardada();
-    if (ventanaActiva === 'descontar-pallet') {
-        // Recargar toda la página cada 1 minuto (60000 ms)
-        setInterval(() => {
-            location.reload();
-        }, 60000);
-    }
 }
 
-// Llamar al final del script
-refrescarSiDescontar();
+// --- REFRESCO AUTOMÁTICO DE "descontar-pallet" ---
+function refrescarDatosDescontar() {
+    setInterval(() => {
+        if (obtenerVentanaGuardada() === 'descontar-pallet') {
+            fetchTasks(); // refresca las tareas
+            fetchStatus(); // refresca los KPIs
+        }
+    }, 60000); // cada 1 minuto
 }
+refrescarDatosDescontar();
 </script>
 </body>
 </html>
