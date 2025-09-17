@@ -120,7 +120,7 @@
     <div class="kpi">
         <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
         <!-- NUEVO KPI PARA CANCELADOS -->
-        <div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>
+        <!--<div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>-->
         <!-- FIN NUEVO KPI -->
         <div class="box"><div class="small">Procesados</div><div id="kpiDone">0</div></div> <!-- Renombrado para mayor claridad -->
         <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
@@ -440,7 +440,7 @@ async function fetchStatus() {
         const data = await response.json();
         $('#kpiPend').textContent = data.pendientes;
         // Actualizado para mostrar el nuevo KPI de cancelados
-        $('#kpiCancel').textContent = data.cancelados;
+        //$('#kpiCancel').textContent = data.cancelados;//
         $('#kpiDone').textContent = data.descargados; // Renombrado de 'descargados' a 'procesados'
         $('#kpiLast').textContent = data.lastAction;
     } catch (error) {
