@@ -221,29 +221,31 @@
                     <form id="formTaskGen" class="row" autocomplete="off">
                         <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
                         <input id="taskPasillo" placeholder="Pasillo" required />
-                        <!-- se agrego este selec para elegir la prioridad de la tarea -->
-                        <select id="prioridad" required>
-                           <option value="" disabled selected>Seleccione la prioridad</option>
-                           <option value="prioridad 1">prioridad 1</option>
-                           <option value="prioridad 2">prioridad 2</option>
-                           <option value="prioridad 3">prioridad 3</option>
-                        </select>
-                      <!-- se agrego este selec para elegir por que lado del pasillo a ingresar los pallet 
-                       conectar esta info a la base de datos y para que aparezca en la ventana descontar 
-                       ejemplo ferring 10 pasillo 55 prioridad 1 lado delantero-->
-                      <select id="ladoDEIngreso" required>
-                        <option value="" disabled selected>Seleccione el lado de ingreso</option>
-                        <option value="lado delantero">lado delantero</option>
-                        <option value="lado trasero">lado trasero</option>
-                      </select>
-
+                  
+                        <!-- Sección prioridad -->
+                        <div id="prioridadWrapper">
+                          <select id="prioridad" required>
+                             <option value="" disabled selected>Seleccione la prioridad</option>
+                             <option value="prioridad 1">prioridad 1</option>
+                             <option value="prioridad 2">prioridad 2</option>
+                             <option value="prioridad 3">prioridad 3</option>
+                          </select>
+                        </div>
+                  
+                        <!-- Sección lado de ingreso -->
+                        <div id="ladoWrapper">
+                          <select id="ladoDEIngreso" required>
+                            <option value="" disabled selected>Seleccione el lado de ingreso</option>
+                            <option value="lado delantero">lado delantero</option>
+                            <option value="lado trasero">lado trasero</option>
+                          </select>
+                        </div>
+                  
                         <button class="primary" type="submit">Continuar</button>
-                        <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button> <!-- Botón Cancelar -->
+                        <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button>
                     </form>
                     <div class="small muted" id="taskGenInfo"></div>
-                </div>
-            </section>
-        </div>
+                  </div>                  
 
         <!-- Ventana 3: Descontar Pallet -->
         <div id="descontar-pallet" class="ventana">
@@ -389,6 +391,44 @@ function finalizarProceso(taskId) {
 
 
 // --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
+function showTaskGenSection(cliente) { // funcion que exceptua estos insumos de prioridad y lado de ingreso//
+    const excepciones = [
+        "CAJA PORTAFOLIO",
+        "CONSERVADORA 14 50MM",
+        "CONSERVADORA 14 30MM",
+        "INSUMO MANTA",
+        "GEL 300",
+        "GEL 500"
+    ];
+
+    // mostrar nombre del cliente/pallet
+    document.getElementById("currentPalletClient").textContent = cliente;
+
+    const esExcepcion = excepciones.some(e => cliente.toUpperCase().includes(e));
+
+    // referencias a los wrappers
+    const prioridadWrapper = document.getElementById("prioridadWrapper");
+    const ladoWrapper = document.getElementById("ladoWrapper");
+    const prioridad = document.getElementById("prioridad");
+    const lado = document.getElementById("ladoDEIngreso");
+
+    if (esExcepcion) {
+        // ocultar selects y quitar required
+        prioridadWrapper.style.display = "none";
+        ladoWrapper.style.display = "none";
+        prioridad.removeAttribute("required");
+        lado.removeAttribute("required");
+    } else {
+        // mostrar selects y volver a exigir required
+        prioridadWrapper.style.display = "block";
+        ladoWrapper.style.display = "block";
+        prioridad.setAttribute("required", "required");
+        lado.setAttribute("required", "required");
+    }
+
+    document.getElementById("taskGenSection").style.display = "block";
+}
+
 function mostrarVentana(idVentana) {
     // Ocultar todas las ventanas
     const ventanas = $$('.ventana');
