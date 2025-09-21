@@ -447,7 +447,7 @@ async function fetchStatus() {
     } catch (error) {
         console.error('Error fetching status:', error);
         $('#kpiPend').textContent = 'ERR';
-        $('#kpiCancel').textContent = 'ERR'; // KPI de cancelados
+        //$('#kpiCancel').textContent = 'ERR'; // KPI de cancelados
         $('#kpiDone').textContent = 'ERR';
         $('#kpiLast').textContent = 'ERR';
     }
@@ -828,6 +828,68 @@ $('#formTaskGen').addEventListener('submit', async e => {
         console.error('Error al generar tarea:', error);
         alert(`Error al generar tarea: ${error.message}`);
     }
+});
+// --- FILTRADO EN TIEMPO REAL ---
+$('#searchPend')?.addEventListener('input', () => {
+    const term = $('#searchPend').value.trim().toLowerCase();
+    const listElement = $('#pendingList');
+    listElement.innerHTML = '';
+    const filteredData = appState.pendingPallets.filter(it =>
+        it.Cliente.toLowerCase().includes(term)
+    );
+    if (!filteredData.length) {
+        listElement.innerHTML = '<div class="empty">No hay pallets pendientes.</div>';
+        return;
+    }
+    filteredData.forEach(pallet => {
+        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
+        $('.client', itemNode).textContent = pallet.Cliente;
+        $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
+        listElement.appendChild(itemNode);
+    });
+});
+
+$('#searchDetail')?.addEventListener('input', () => {
+    const term = $('#searchDetail').value.trim().toLowerCase();
+    const listElement = $('#detailList');
+    listElement.innerHTML = '';
+    const filteredData = appState.pendingPallets.filter(it =>
+        it.Cliente.toLowerCase().includes(term)
+    );
+    if (!filteredData.length) {
+        listElement.innerHTML = '<div class="empty">No hay pallets pendientes.</div>';
+        return;
+    }
+    filteredData.forEach(pallet => {
+        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
+        $('.client', itemNode).textContent = pallet.Cliente;
+        $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
+        const btnGenerar = document.createElement('button');
+        btnGenerar.textContent = "Generar tarea";
+        btnGenerar.className = "primary";
+        btnGenerar.addEventListener('click', () => showTaskGenSection(pallet));
+        itemNode.querySelector('.badge-container')?.appendChild(btnGenerar);
+        listElement.appendChild(itemNode);
+    });
+});
+
+$('#searchTask')?.addEventListener('input', () => {
+    const term = $('#searchTask').value.trim().toLowerCase();
+    const list = $('#taskList');
+    list.innerHTML = '';
+    const filteredTasks = appState.tasks.filter(t =>
+        t.Cliente.toLowerCase().includes(term) || (t.Pasillo && t.Pasillo.toLowerCase().includes(term))
+    );
+    if (!filteredTasks.length) {
+        list.innerHTML = '<div class="empty">No hay tareas pendientes.</div>';
+        return;
+    }
+    filteredTasks.forEach(tarea => {
+        const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
+        $('.client', taskNode).textContent = `${tarea.Cliente} (Pasillo: ${tarea.Pasillo})`;
+        $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar}`;
+        list.appendChild(taskNode);
+    });
 });
 
 // --- LÓGICA DE NAVEGACIÓN Y EVENTOS GLOBALES ---
