@@ -439,7 +439,7 @@ async function fetchStatus() {
         const response = await fetch(`${API_URL}/status`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        $('#kpiPend').textContent = data.pendientes < 0 ? data.pendientes + 29 : data.pendientes;//forzado temporalmente por quedar en 29 negativo
+        $('#kpiPend').textContent = data.pendientes + 29;//forzado temporalmente por quedar en negativo
         //$('#kpiPend').textContent = data.pendientes;
         // Actualizado para mostrar el nuevo KPI de cancelados
         //$('#kpiCancel').textContent = data.cancelados;//
