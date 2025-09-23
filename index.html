@@ -222,16 +222,16 @@
                         <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
                         <input id="taskPasillo" placeholder="Pasillo" required />
                         <!-- se agrego este selec para elegir la prioridad de la tarea -->
-                        <select id="prioridad" required>
+                        <select id="prioridad"> <!--al sacar required no es obligatorio seleccionar una opcion-->
                            <option value="" disabled selected>Seleccione la prioridad</option>
-                           <option value="prioridad 1">prioridad 1</option>
-                           <option value="prioridad 2">prioridad 2</option>
-                           <option value="prioridad 3">prioridad 3</option>
+                           <option value="1">prioridad 1</option>
+                           <option value="2">prioridad 2</option>
+                           <option value="3">prioridad 3</option>
                         </select>
                       <!-- se agrego este selec para elegir por que lado del pasillo a ingresar los pallet 
                        conectar esta info a la base de datos y para que aparezca en la ventana descontar 
                        ejemplo ferring 10 pasillo 55 prioridad 1 lado delantero-->
-                      <select id="ladoDEIngreso" required>
+                      <select id="ladoDEIngreso">
                         <option value="" disabled selected>Seleccione el lado de ingreso</option>
                         <option value="lado delantero">lado delantero</option>
                         <option value="lado trasero">lado trasero</option>
