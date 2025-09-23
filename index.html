@@ -483,7 +483,23 @@ function renderPendientes(targetListId) {
         return;
     }
 
+    // --- Agrupar por cliente ---
+    const agrupados = {};
     filteredData.forEach(pallet => {
+        const base = pallet.Cliente.split(" ")[0].toUpperCase(); // tomar solo nombre base
+        if (!agrupados[base]) {
+            agrupados[base] = {
+                Cliente: base,
+                DisponibleParaTareas: 0,
+                FechaHoraIngreso: pallet.FechaHoraIngreso,
+                PalletEntradaID: pallet.PalletEntradaID
+            };
+        }
+        agrupados[base].DisponibleParaTareas += pallet.DisponibleParaTareas;
+    });
+
+    // --- Renderizar agrupados ---
+    Object.values(agrupados).forEach(pallet => {
         const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
         $('.client', itemNode).textContent = pallet.Cliente;
         $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
