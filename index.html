@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="shortcut icon" href="logo-app.ico" type="image/x-icon">
+<link rel="icon" href="/logo-app.jpg" type="image/x-icon">
 <title>Control de Pallets</title>
 <style>
 :root{
@@ -44,6 +44,16 @@
      gap: 8px; /* Espacio entre elementos */
      flex-wrap: wrap; /* Permite que los botones pasen a la siguiente línea si no caben */
  }
+ .badge.en-proceso-alerta {
+    background: var(--danger); /* Usamos el color rojo definido en tus variables CSS */
+    color: var(--text); /* O el color de texto que mejor contraste */
+    border-color: rgba(255, 255, 255, 0.1); /* Un borde sutil */
+}
+
+/* Si quieres que el texto dentro del badge también sea rojo */
+.badge.en-proceso-alerta span {
+    color: var(--danger);
+}
  .badge-container { /* Contenedor específico para badges y botones */
      display: flex;
      align-items: center;
@@ -81,15 +91,15 @@
   /* Media query para pantalla celular */
    @media (max-width: 600px) {
      #filtroExcel {
-       flex-direction: column;      
-       align-items: flex-start;      
-       gap: 8px;                    
-       margin-left: 0;              
+       flex-direction: column;
+       align-items: flex-start;
+       gap: 8px;
+       margin-left: 0;
      }
      #filtroExcel input,
      #filtroExcel button {
-       width: 100%;                  
-       box-sizing: border-box;      
+       width: 100%;
+       box-sizing: border-box;
      }
      nav {
          flex-direction: column;
@@ -120,9 +130,9 @@
     <div class="kpi">
         <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
         <!-- NUEVO KPI PARA CANCELADOS -->
-        <!--<div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>-->
+        <div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>
         <!-- FIN NUEVO KPI -->
-        <div class="box"><div class="small">Procesados</div><div id="kpiDone">0</div></div> <!-- Renombrado para mayor claridad -->
+        <div class="box"><div class="small">Procesados</div><div id="kpiDone">0</div></div>
         <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
     </div>
 
@@ -134,18 +144,20 @@
         <button data-target="descontar-pallet">Descontar Pallet</button>
     </nav>
     
-    <!-- *** NUEVA SECCIÓN PARA FILTRO DE FECHA EN DESCARGA DE EXCEL *** -->
+    <!-- *** SECCIÓN PARA FILTRO DE FECHA EN DESCAGA Y KPIs *** -->
     <div id="filtroExcel" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-        <label for="fechaInicioExcel" class="muted" style="font-size: 14px;">Desde:</label>
-        <input type="date" id="fechaInicioExcel" style="width: auto; padding: 6px 10px;"/>
-        <label for="fechaFinExcel" class="muted" style="font-size: 14px;">Hasta:</label>
-        <input type="date" id="fechaFinExcel" style="width: auto; padding: 6px 10px;"/>
-        <!-- BOTÓN "HOY" AÑADIDO AQUÍ -->
-        <button type="button" id="btnHoyFechaDescarga" class="ghost">Hoy</button>
-        <!-- --- -->
+        <!-- El input de fecha ahora está asociado directamente a los KPIs y a la descarga -->
+        <label for="fechaInicioFiltro" class="muted" style="font-size: 14px;">Fecha:</label>
+        <input type="date" id="fechaInicioFiltro" style="width: auto; padding: 6px 10px;"/>
+        
+        <!-- Botones "Hoy" y "Acumulado" -->
+        <button type="button" id="btnFechaHoy" class="ghost">Hoy</button>
+        <button type="button" id="btnAcumulado" class="ghost">Acumulado</button>
+        
+        <!-- Botón de Descarga de Movimientos -->
         <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
     </div>
-    <!-- *** FIN NUEVA SECCIÓN *** -->
+    <!-- *** FIN SECCIÓN FILTRO FECHA *** -->
 
     <!-- Contenedor principal para las diferentes pantallas/ventanas -->
     <div class="main-content">
@@ -197,7 +209,6 @@
                         <option value="SANCOR">SANCOR</option>
                         <option value="SOPHIA">SOPHIA</option>
                         <option value="SUSTANCIAS CONTROLADADAS">SUSTANCIAS CONTROLADAS</option>
-                        <option value="No valido">No valido</option>
                     </select>
                     <input id="UsuarioIngreso" type="text" placeholder="Usuario" required />
                     <button class="primary" type="submit">Cargar</button>
@@ -221,21 +232,19 @@
                     <form id="formTaskGen" class="row" autocomplete="off">
                         <input id="taskCantidad" type="number" placeholder="Cantidad" min="1" required />
                         <input id="taskPasillo" placeholder="Pasillo" required />
-                        <!-- se agrego este selec para elegir la prioridad de la tarea -->
-                        <select id="prioridad"> <!--al sacar required no es obligatorio seleccionar una opcion-->
-                           <option value="" disabled selected>Seleccione la prioridad</option>
-                           <option value="1">prioridad 1</option>
-                           <option value="2">prioridad 2</option>
-                           <option value="3">prioridad 3</option>
+                        <!-- *** SECCIÓN DE PRIORIDAD AGREGADA AQUÍ *** -->
+                        <select id="prioridad" required>
+                            <option value="" disabled selected>Seleccione la prioridad</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Media">Media</option>
+                            <option value="Baja">Baja</option>
                         </select>
-                      <!-- se agrego este selec para elegir por que lado del pasillo a ingresar los pallet 
-                       conectar esta info a la base de datos y para que aparezca en la ventana descontar 
-                       ejemplo ferring 10 pasillo 55 prioridad 1 lado delantero-->
-                      <select id="ladoDEIngreso">
-                        <option value="" disabled selected>Seleccione el lado de ingreso</option>
-                        <option value="lado delantero">lado delantero</option>
-                        <option value="lado trasero">lado trasero</option>
-                      </select>
+                        <!-- *** FIN SECCIÓN PRIORIDAD *** -->
+                        <select id="ladoDEIngreso" required>
+                            <option value="" disabled selected>Seleccione el lado de ingreso</option>
+                            <option value="lado delantero">lado delantero</option>
+                            <option value="lado trasero">lado trasero</option>
+                        </select>
 
                         <button class="primary" type="submit">Continuar</button>
                         <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button> <!-- Botón Cancelar -->
@@ -259,10 +268,10 @@
                         <input id="discountCantidad" type="number" placeholder="Cantidad a descontar" min="1" required />
                         
                         <!-- Botón Descontar (verde) -->
-                        <button class="primary" type="submit">Descontar</button> 
+                        <button class="primary" type="submit">Descontar</button>
                         
                         <!-- Botón Cancelar (transparente/warn) -->
-                        <button type="button" class="ghost warn" onclick="hideDiscountSection()">Cancelar</button> 
+                        <button type="button" class="ghost warn" onclick="hideDiscountSection()">Cancelar</button>
                     </form>
                     <div class="small muted" id="discountInfo"></div>
                 </div>
@@ -279,7 +288,7 @@
             <div class="small"><span class="cantidad"></span></div>
         </div>
         <!-- El div para el badge y/o botones -->
-        <div class="badge-container"></div> 
+        <div class="badge-container"></div>
         <!-- El botón para generar tarea se agregará dinámicamente en JS solo si es necesario -->
     </div>
 </template>
@@ -292,65 +301,22 @@
             <div class="small"><span class="cantidad"></span></div>
         </div>
         <!-- Div para alinear los botones -->
-        <div class="row" style="gap: 8px;"> 
-            <button class="primary btnTask">Descontar</button> 
-            <button type="button" class="ghost warn">Cancelar</button> 
+        <div class="row" style="gap: 8px;">
+            <button class="primary btnTask">Descontar</button>
+            <button type="button" class="ghost warn">Cancelar</button>
         </div>
     </div>
 </template>
 
 <!-- Script para la lógica del frontend -->
 <script>
+    
 // --- CONFIGURACIÓN BÁSICA ---
 const API_URL = '/api';
 
 // Helpers para seleccionar elementos DOM
 const $ = (s, p = document) => p.querySelector(s);
 const $$ = (s, p = document) => p.querySelectorAll(s);
-
-// Evento para el formulario de Ingreso de Pallet
-$('#formAdd').addEventListener('submit', async e => {
-    e.preventDefault();
-    const cantidad = parseInt($('#cantidad').value.trim());
-    const cliente = $('#cliente').value;
-    const usuarioIngreso = $('#UsuarioIngreso').value.trim();
-
-    if (isNaN(cantidad) || cantidad <= 0) { 
-        alert('Por favor, ingresa una cantidad válida.'); 
-        return; 
-    }
-    if (!cliente) { 
-        alert('Por favor, selecciona un comitente.'); 
-        return; 
-    }
-    if (!usuarioIngreso) { 
-        alert('El usuario de ingreso es requerido.'); 
-        return; 
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/pendientes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cantidad, cliente, UsuarioIngreso: usuarioIngreso })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || `HTTP error! status: ${response.status}`);
-        }
-
-        alert(`¡Éxito! ${result.message || 'Pallet cargado.'}`);
-        $('#formAdd').reset();
-        fetchPendientes('pendingList');
-        fetchPendientes('detailList');
-        fetchStatus();
-    } catch (error) {
-        console.error('Error al agregar pallet:', error);
-        alert(`Error al cargar pallet: ${error.message}`);
-    }
-});
 
 // Estado de la aplicación
 let appState = {
@@ -360,8 +326,12 @@ let appState = {
     currentPalletToDiscountDirectly: null,
     currentPalletForTask: null
 };
-//LocalStorage "En proceso"//
 
+// --- Constantes de LocalStorage ---
+const STORAGE_KEY = 'palletControl_selectedWindow'; // Para la ventana activa
+const STORAGE_PROCESO = "tareasEnProceso"; // Para las tareas marcadas como "en proceso"
+
+// --- Funciones de LocalStorage ---
 function getProcesos() {
   return JSON.parse(localStorage.getItem(STORAGE_PROCESO)) || [];
 }
@@ -434,21 +404,33 @@ function mostrarVentana(idVentana) {
 }
 
 // --- LÓGICA PARA CARGAR DATOS EN TABLAS Y SECCIONES ---
-async function fetchStatus() {
+async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como parámetro opcional
+    let url = `${API_URL}/status`;
+    if (fechaInicio) { // Si hay fecha, la añadimos a la URL
+        url += `?fechaInicio=${encodeURIComponent(fechaInicio)}`;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/status`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const response = await fetch(url);
+        if (!response.ok) {
+            const errorData = await response.json();
+            // Si el error es de "fecha requerida", mostrar mensaje más específico.
+            if (errorData.message && errorData.message.includes("Se requiere una fecha")) {
+                console.error("Error al obtener status:", errorData.message);
+                alert(`Error: ${errorData.message}`);
+            } else {
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+        }
         const data = await response.json();
-        $('#kpiPend').textContent = data.pendientes + 29;//forzado temporalmente por quedar en negativo
-        //$('#kpiPend').textContent = data.pendientes;
-        // Actualizado para mostrar el nuevo KPI de cancelados
-        //$('#kpiCancel').textContent = data.cancelados;//
-        $('#kpiDone').textContent = data.descargados; // Renombrado de 'descargados' a 'procesados'
+        $('#kpiPend').textContent = data.pendientes;
+        $('#kpiCancel').textContent = data.cancelados;
+        $('#kpiDone').textContent = data.descargados;
         $('#kpiLast').textContent = data.lastAction;
     } catch (error) {
         console.error('Error fetching status:', error);
         $('#kpiPend').textContent = 'ERR';
-        //$('#kpiCancel').textContent = 'ERR'; // KPI de cancelados
+        $('#kpiCancel').textContent = 'ERR';
         $('#kpiDone').textContent = 'ERR';
         $('#kpiLast').textContent = 'ERR';
     }
@@ -464,14 +446,14 @@ async function fetchPendientes(targetListId = 'pendingList') {
         renderPendientes(targetListId);
     } catch (error) {
         console.error(`Error fetching pending pallets for ${targetListId}:`, error);
-        appState.pendingPallets = []; 
-        renderPendientes(targetListId); 
+        appState.pendingPallets = [];
+        renderPendientes(targetListId);
     }
 }
 
 function renderPendientes(targetListId) {
     const listElement = $(`#${targetListId}`);
-    listElement.innerHTML = ''; 
+    listElement.innerHTML = '';
 
     const term = $('#' + (targetListId === 'detailList' ? 'searchDetail' : 'searchPend')).value.trim().toLowerCase();
     const filteredData = appState.pendingPallets.filter(it =>
@@ -489,14 +471,14 @@ function renderPendientes(targetListId) {
         $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
 
         const fechaIngreso = pallet.FechaHoraIngreso ? new Date(pallet.FechaHoraIngreso) : null;
-        let estadoText = `Pendiente: ${pallet.DisponibleParaTareas}`; 
+        let estadoText = `Pendiente: ${pallet.DisponibleParaTareas}`;
         if (fechaIngreso && !isNaN(fechaIngreso.getTime())) {
             estadoText += ` (${fechaIngreso.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${fechaIngreso.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
         } else {
             estadoText += " (Fecha desconocida)";
         }
         
-        const badgeContainer = itemNode.querySelector('.badge-container'); 
+        const badgeContainer = itemNode.querySelector('.badge-container');
         if (badgeContainer) {
             badgeContainer.innerHTML = `<span class="badge">${estadoText}</span>`;
         }
@@ -516,7 +498,7 @@ function renderPendientes(targetListId) {
             if (badgeContainer) {
                 badgeContainer.appendChild(btnGenerar);
             }
-        } 
+        }
 
         listElement.appendChild(itemNode);
     });
@@ -524,21 +506,22 @@ function renderPendientes(targetListId) {
 
 async function fetchTasks() {
     try {
+        // *** CORRECCIÓN: Ruta a /api/tareas-descuento, sin barra final innecesaria ***
         const response = await fetch(`${API_URL}/tareas-descuento`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         appState.tasks = await response.json();
         renderTasks();
     } catch (error) {
         console.error('Error fetching tasks:', error);
-        appState.tasks = []; 
-        renderTasks(); 
+        appState.tasks = [];
+        renderTasks();
     }
 }
 
 function renderTasks() {
     const list = $('#taskList');
-    list.innerHTML = ''; 
-
+    list.innerHTML = '';
+    
     if (!appState.tasks.length) {
         list.innerHTML = '<div class="empty">No hay tareas pendientes.</div>';
         return;
@@ -547,16 +530,27 @@ function renderTasks() {
     appState.tasks.forEach(tarea => {
         const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
         $('.client', taskNode).textContent = `${tarea.Cliente} (Pasillo: ${tarea.Pasillo})`;
-        $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar}`;
-         // Mostrar etiqueta "En proceso" si está marcada en localStorage
-        if (estaEnProceso(tarea.ID)) {
+        $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar} | Prioridad: ${tarea.Prioridad || 'N/A'}`;
+        
+        // --- LÓGICA PARA MOSTRAR ESTADO DE PROCESO Y DESHABILITAR BOTÓN ---
+        const badgeContainer = taskNode.querySelector('.cantidad'); // Usaremos el mismo div que la cantidad para mostrar el badge
+        if (tarea.EstadoProceso === 'EnProceso') {
             const badge = document.createElement('span');
-            badge.textContent = "En proceso";
-            badge.className = "badge warn"; //
-            taskNode.querySelector('.cantidad').appendChild(badge);
-        }
+            badge.textContent = `En proceso por: ${tarea.UsuarioProcesando || 'Alguien'}`;
+            badge.className = "badge en-proceso-alerta"; // Estilo para indicar "en proceso"
+            badgeContainer.appendChild(badge);
 
-        const btnTask = taskNode.querySelector('.btnTask'); 
+            // Deshabilitar el botón "Descontar" si está en proceso por otro usuario
+            const btnTask = taskNode.querySelector('.btnTask');
+            if (btnTask) {
+                btnTask.disabled = true;
+                btnTask.style.opacity = '0.6'; // Un poco de transparencia para indicar que está deshabilitado visualmente
+            }
+        }
+        // --- FIN LÓGICA ESTADO PROCESO ---
+
+        // El botón de Cancelar (desbloquear) sólo debería ser visible/activo si el usuario actual es quien bloqueó la tarea.
+        // Para simplificar, lo hacemos siempre visible pero la lógica de desbloqueo podría ser más restrictiva.
         const btnCancel = taskNode.querySelector('.item > div:last-child > button:last-child'); 
 
         taskNode.dataset.taskId = tarea.ID;
@@ -564,39 +558,83 @@ function renderTasks() {
         taskNode.dataset.cantidadPendiente = tarea.CantidadPendienteDescontar;
         taskNode.dataset.pasillo = tarea.Pasillo;
 
-        btnTask.addEventListener('click', (event) => {
-            handleTaskButtonClick(event); 
-        });
+        // El botón "Descontar" ahora primero intenta bloquear la tarea
+        const btnTask = taskNode.querySelector('.btnTask');
+        if (btnTask) {
+            btnTask.addEventListener('click', async (event) => { // Hacemos la función async para poder usar await
+                // Asegurarse que el botón no esté deshabilitado antes de continuar
+                if (btnTask.disabled) {
+                    alert("Esta tarea ya está siendo procesada por otro usuario.");
+                    return;
+                }
 
-        if (btnCancel) { 
+                // Intentamos bloquear la tarea
+                try {
+                    // Aquí deberíamos obtener el nombre del usuario actual (ej. de un login)
+                    // Por ahora, lo simulamos con prompt. Reemplaza esto con tu lógica de autenticación.
+                    const usuarioActual = prompt("Introduce tu nombre de usuario para iniciar el proceso:");
+                    if (!usuarioActual) {
+                        alert("No se pudo iniciar el proceso sin un nombre de usuario.");
+                        return;
+                    }
+
+                    const blockResponse = await fetch(`${API_URL}/tareas-descuento/${tarea.ID}/bloquear`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usuario: usuarioActual })
+                    });
+
+                    const blockResult = await blockResponse.json();
+
+                    if (!blockResponse.ok) {
+                        alert(blockResult.message || `Error al bloquear la tarea: ${blockResponse.status}`);
+                        return; // No continuar si el bloqueo falla
+                    }
+
+                    // Si el bloqueo fue exitoso, procedemos a mostrar la sección de descuento
+                    handleTaskButtonClick(event); // Llama a la función original para mostrar la sección de descuento
+                } catch (error) {
+                    console.error("Error al intentar bloquear la tarea:", error);
+                    alert(`Error al bloquear la tarea: ${error.message}`);
+                }
+            });
+        }
+
+        // El botón "Cancelar" ahora llama a la función de desbloqueo
+        if (btnCancel) {
             btnCancel.addEventListener('click', async () => {
-                if (!confirm(`¿Estás seguro de que deseas cancelar la tarea ${tarea.ID} para ${tarea.Cliente}?`)) {
+                // Si la tarea está en proceso por otro usuario, no debería ser cancelable por este.
+                // Esto se maneja principalmente en el backend, pero una confirmación es buena.
+                if (!confirm(`¿Estás seguro de que deseas cancelar esta operación y desbloquear la tarea ${tarea.ID} para otros usuarios?`)) {
                     return; 
                 }
                 
                 try {
-                    const response = await fetch(`${API_URL}/tareas-descuento/${tarea.ID}`, {
-                        method: 'DELETE', 
-                        headers: { 'Content-Type': 'application/json' }
+                    // Pedir el nombre del usuario que desbloquea
+                    const usuarioActual = prompt("Introduce tu nombre de usuario para desbloquear la tarea:");
+                    if (!usuarioActual) {
+                        alert("No se pudo desbloquear la tarea sin un nombre de usuario.");
+                        return;
+                    }
+
+                    const response = await fetch(`${API_URL}/tareas-descuento/${tarea.ID}/desbloquear`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usuario: usuarioActual })
                     });
                     
-                    const result = await response.json(); 
+                    const result = await response.json();
 
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP error! status: ${response.status}`);
                     }
 
-                    alert(`¡Éxito! ${result.message || 'Tarea cancelada.'}`);
+                    alert(`¡Éxito! ${result.message || 'Tarea desbloqueada.'}`);
 
-                    finalizarProceso(tarea.ID);
-                    
-                    fetchTasks(); 
-                    fetchPendientes('pendingList'); 
-                    fetchPendientes('detailList'); 
-                    fetchStatus(); 
+                    fetchTasks(); // Recargar la lista para reflejar el cambio
                 } catch (error) {
-                    console.error('Error al cancelar tarea:', error);
-                    alert(`Error al cancelar tarea: ${error.message}`);
+                    console.error('Error al desbloquear tarea:', error);
+                    alert(`Error al desbloquear tarea: ${error.message}`);
                 }
             });
         }
@@ -610,29 +648,29 @@ function showTaskGenSection(pallet) {
     if (!pallet || !pallet.PalletEntradaID || !pallet.Cliente || typeof pallet.DisponibleParaTareas === 'undefined') {
         console.error("Error: Se intentó mostrar la sección de generación de tarea con datos de pallet inválidos.", pallet);
         alert("Error interno al seleccionar el pallet. Por favor, intenta de nuevo.");
-        return; 
+        return;
     }
-   
+    
     appState.currentPalletForTask = pallet;
     $('#detailList').style.display = 'none';
     $('#taskGenSection').style.display = 'block';
     $('#currentPalletClient').textContent = pallet.Cliente;
     $('#taskCantidad').max = pallet.DisponibleParaTareas;
-    $('#taskCantidad').value = pallet.DisponibleParaTareas; 
+    $('#taskCantidad').value = pallet.DisponibleParaTareas;
     $('#taskPasillo').value = '';
     $('#taskGenInfo').textContent = `Pallet ID: ${pallet.PalletEntradaID}. Disponible para esta tarea: ${pallet.DisponibleParaTareas}`;
 }
 
 function hideTaskGenSection() {
     $('#taskGenSection').style.display = 'none';
-    $('#detailList').style.display = 'grid'; 
-    $('#formTaskGen').reset(); 
-    appState.currentPalletForTask = null; 
+    $('#detailList').style.display = 'grid';
+    $('#formTaskGen').reset();
+    appState.currentPalletForTask = null;
 }
 
-function handleTaskButtonClick(event) {
-    const clickedButton = event.target; 
-    const taskItemNode = clickedButton.closest('.item'); 
+function handleTaskButtonClick(event) { // Esta función ahora está diseñada para ser llamada DESPUÉS de bloquear la tarea
+    const clickedButton = event.target;
+    const taskItemNode = clickedButton.closest('.item');
 
     if (!taskItemNode) {
         console.error("Error: No se pudo encontrar el elemento contenedor del item de la tarea.");
@@ -643,7 +681,7 @@ function handleTaskButtonClick(event) {
     const taskId = taskItemNode.dataset.taskId;
     const cantidadPendiente = parseInt(taskItemNode.dataset.cantidadPendiente);
     const cliente = taskItemNode.dataset.cliente;
-    const pasillo = taskItemNode.dataset.pasillo || 'N/A'; 
+    const pasillo = taskItemNode.dataset.pasillo || 'N/A';
 
     if (!taskId || isNaN(parseInt(taskId))) {
         console.error("Error: El taskId no es válido en el elemento contenedor.");
@@ -652,103 +690,53 @@ function handleTaskButtonClick(event) {
     }
     
     appState.currentTaskToDiscount = {
-        id: taskId, 
+        id: taskId,
         cliente: cliente,
         cantidadPendiente: cantidadPendiente
     };
 
     $('#discountSection').style.display = 'block';
-    $('#currentTaskClient').textContent = `${cliente} (Pasillo: ${pasillo})`; 
-    $('#discountCantidad').max = cantidadPendiente; 
-    $('#discountCantidad').value = cantidadPendiente; 
+    $('#currentTaskClient').textContent = `${cliente} (Pasillo: ${pasillo})`;
+    $('#discountCantidad').max = cantidadPendiente;
+    $('#discountCantidad').value = cantidadPendiente;
     $('#discountInfo').textContent = `Pendiente en tarea: ${cantidadPendiente}`;
 }
 
 function hideDiscountSection() {
     $('#discountSection').style.display = 'none';
-    $('#formDiscount').reset(); 
-    appState.currentTaskToDiscount = null; 
+    $('#formDiscount').reset();
+    appState.currentTaskToDiscount = null;
     appState.currentPalletToDiscountDirectly = null;
 }
 
 
+// --- Eventos de los formularios y botones ---
 
-// LocalStorage: manejo de "En proceso" conectar  a la base de datos este estado
-
-const STORAGE_PROCESO = "tareasEnProceso";
-
-function getProcesos() {
-  return JSON.parse(localStorage.getItem(STORAGE_PROCESO)) || [];
-}
-
-function saveProcesos(procesos) {
-  localStorage.setItem(STORAGE_PROCESO, JSON.stringify(procesos));
-}
-
-function marcarEnProceso(taskId) {
-  let procesos = getProcesos();
-  if (!procesos.includes(taskId)) {
-    procesos.push(taskId);
-    saveProcesos(procesos);
-  }
-}
-
-function estaEnProceso(taskId) {
-  return getProcesos().includes(taskId);
-}
-
-function finalizarProceso(taskId) {
-  let procesos = getProcesos().filter(id => id !== taskId);
-  saveProcesos(procesos);
-}
-// Evento para el formulario de Descontar Pallet
-$('#formDiscount').addEventListener('submit', async e => {
+// Evento para el formulario de Ingreso de Pallet
+$('#formAdd').addEventListener('submit', async e => {
     e.preventDefault();
-    
-    let url;
-    let requestBody;
-    let mensajeExito = 'Pallet descontado.';
+    const cantidad = parseInt($('#cantidad').value.trim());
+    const cliente = $('#cliente').value;
+    const usuarioIngreso = $('#UsuarioIngreso').value.trim();
 
-    if (appState.currentTaskToDiscount) {
-        if (!appState.currentTaskToDiscount.id) {
-            alert('No hay tarea seleccionada para descontar.');
-            return;
-        }
-        url = `${API_URL}/descontar-pallet`;
-        requestBody = {
-            tareaId: appState.currentTaskToDiscount.id,
-            cantidadADescontar: parseInt($('#discountCantidad').value.trim())
-        };
-        currentTaskId = appState.currentTaskToDiscount.id; //guardamos ID 
-        mensajeExito = 'Pallet descontado de la tarea.';
-    } else if (appState.currentPalletToDiscountDirectly) {
-        if (!appState.currentPalletToDiscountDirectly.id) {
-            alert('No hay pallet seleccionado para descontar directamente.');
-            return;
-        }
-        url = `${API_URL}/descontar-pallet-directo`;
-        requestBody = {
-            palletEntradaId: appState.currentPalletToDiscountDirectly.id,
-            cantidadADescontar: parseInt($('#discountCantidad').value.trim())
-        };
-        mensajeExito = 'Pallet descontado directamente.';
-    } else {
-        alert('No hay tarea ni pallet seleccionado para descontar.');
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('Por favor, ingresa una cantidad válida.');
         return;
     }
-
-    const cantidadADescontar = parseInt($('#discountCantidad').value.trim());
-
-    if (isNaN(cantidadADescontar) || cantidadADescontar <= 0) {
-        alert('Por favor, ingresa una cantidad válida a descontar.');
+    if (!cliente) {
+        alert('Por favor, selecciona un comitente.');
+        return;
+    }
+    if (!usuarioIngreso) {
+        alert('El usuario de ingreso es requerido.');
         return;
     }
 
     try {
-        const response = await fetch(url, { 
+        const response = await fetch(`${API_URL}/pendientes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody) 
+            body: JSON.stringify({ cantidad, cliente, UsuarioIngreso: usuarioIngreso })
         });
 
         const result = await response.json();
@@ -756,26 +744,77 @@ $('#formDiscount').addEventListener('submit', async e => {
         if (!response.ok) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
-        // Si es una tarea y se descontó parcialmente, marcamos "En proceso" conectar a la base de datos este estado
-        if (currentTaskId && cantidadADescontar > 0) {
-            marcarEnProceso(currentTaskId);
-        }
 
-        alert(`¡Éxito! ${result.message || mensajeExito}`);
-        hideDiscountSection(); 
-        fetchTasks(); 
-        fetchPendientes('pendingList'); 
-        fetchPendientes('detailList'); 
-        fetchStatus(); 
+        alert(`¡Éxito! ${result.message || 'Pallet cargado.'}`);
+        $('#formAdd').reset();
+        fetchPendientes('pendingList');
+        fetchPendientes('detailList');
+        fetchStatus();
     } catch (error) {
-        console.error('Error al descontar pallet:', error);
-        alert(`Error al descontar pallet: ${error.message}`);
-    } finally {
-        appState.currentTaskToDiscount = null;
-        appState.currentPalletToDiscountDirectly = null;
+        console.error('Error al agregar pallet:', error);
+        alert(`Error al cargar pallet: ${error.message}`);
     }
 });
 
+// Evento para el formulario de Descontar Pallet
+$('#formDiscount').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    let url;
+    let requestBody;
+
+    // Validar que haya una tarea seleccionada
+    if (!appState.currentTaskToDiscount || !appState.currentTaskToDiscount.id) {
+        alert('No hay tarea seleccionada para descontar. Por favor, haz clic en "Descontar" sobre una tarea de la lista y asegúrate de que se haya bloqueado correctamente.');
+        return;
+    }
+
+    const cantidadADescontar = parseInt($('#discountCantidad').value.trim());
+    // **SOLICITAR USUARIO MANUALMENTE AQUÍ, JUSTO ANTES DE ENVIAR LA PETICIÓN**
+    const usuarioActual = prompt("Introduce tu nombre de usuario para realizar el descuento:");
+
+    // Validaciones de usuario y cantidad
+    if (isNaN(cantidadADescontar) || cantidadADescontar <= 0) {
+        alert('Por favor, ingresa una cantidad válida a descontar.');
+        return;
+    }
+    if (!usuarioActual || usuarioActual.trim() === "") { // Validamos que el usuario no esté vacío
+        alert('Se requiere un nombre de usuario válido para realizar el descuento.');
+        return;
+    }
+
+    // Construcción del requestBody incluyendo el usuario
+    url = `/api/descontar-pallet`;
+    requestBody = {
+        tareaId: appState.currentTaskToDiscount.id,
+        cantidadADescontar: cantidadADescontar,
+        usuario: usuarioActual.trim() // Envía el usuario ingresado manualmente
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`¡Éxito! ${result.message || 'Pallet descontado de la tarea.'}`);
+        hideDiscountSection();
+        fetchTasks();
+        fetchPendientes('pendingList');
+        fetchPendientes('detailList');
+        fetchStatus();
+    } catch (error) {
+        console.error('Error al descontar pallet:', error);
+        alert(`Error al descontar pallet: ${error.message}`);
+    }
+});
 // Evento para el formulario de Generar Tarea
 $('#formTaskGen').addEventListener('submit', async e => {
     e.preventDefault();
@@ -784,32 +823,40 @@ $('#formTaskGen').addEventListener('submit', async e => {
         console.error('Error: appState.currentPalletForTask está incompleto o no está definido.', appState.currentPalletForTask);
         alert('No se ha podido identificar el pallet para generar la tarea. Por favor, selecciona un pallet de la lista anterior.');
         $('#taskGenSection').style.display = 'none';
-        $('#detailList').style.display = 'grid'; 
+        $('#detailList').style.display = 'grid';
         return;
     }
 
     const cantidad = parseInt($('#taskCantidad').value.trim());
-    let pasillo = $('#taskPasillo').value.trim(); 
+    let pasillo = $('#taskPasillo').value.trim();
+    const prioridad = $('#prioridad').value; // Capturamos la prioridad del nuevo select
 
-    if (isNaN(cantidad) || cantidad <= 0) { 
-        alert('Por favor, ingresa una cantidad válida mayor a cero.'); 
-        return; 
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('Por favor, ingresa una cantidad válida mayor a cero.');
+        return;
     }
     
-    if (!pasillo) { 
-        alert('El campo Pasillo es requerido.'); 
-        return; 
+    if (!pasillo) {
+        alert('El campo Pasillo es requerido.');
+        return;
     }
+    // Agregamos validación para la prioridad
+    if (!prioridad) {
+        alert('Por favor, selecciona una prioridad.');
+        return;
+    }
+
 
     try {
         const response = await fetch(`${API_URL}/tareas-descuento`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                PalletEntradaID: appState.currentPalletForTask.PalletEntradaID, 
-                cliente: appState.currentPalletForTask.Cliente, 
+                PalletEntradaID: appState.currentPalletForTask.PalletEntradaID,
+                cliente: appState.currentPalletForTask.Cliente,
                 cantidad: cantidad,
-                pasillo: pasillo 
+                pasillo: pasillo,
+                prioridad: prioridad // <-- Enviamos la prioridad seleccionada
             })
         });
 
@@ -820,82 +867,18 @@ $('#formTaskGen').addEventListener('submit', async e => {
         }
 
         alert(`¡Éxito! ${result.message || 'Tarea generada.'}`);
-        hideTaskGenSection(); 
+        hideTaskGenSection();
         fetchPendientes('pendingList');
         fetchPendientes('detailList');
-        fetchTasks(); 
-        fetchStatus(); 
+        fetchTasks();
+        fetchStatus();
     } catch (error) {
         console.error('Error al generar tarea:', error);
         alert(`Error al generar tarea: ${error.message}`);
     }
 });
-// --- FILTRADO EN TIEMPO REAL ---
-$('#searchPend')?.addEventListener('input', () => {
-    const term = $('#searchPend').value.trim().toLowerCase();
-    const listElement = $('#pendingList');
-    listElement.innerHTML = '';
-    const filteredData = appState.pendingPallets.filter(it =>
-        it.Cliente.toLowerCase().includes(term)
-    );
-    if (!filteredData.length) {
-        listElement.innerHTML = '<div class="empty">No hay pallets pendientes.</div>';
-        return;
-    }
-    filteredData.forEach(pallet => {
-        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
-        $('.client', itemNode).textContent = pallet.Cliente;
-        $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
-        listElement.appendChild(itemNode);
-    });
-});
-
-$('#searchDetail')?.addEventListener('input', () => {
-    const term = $('#searchDetail').value.trim().toLowerCase();
-    const listElement = $('#detailList');
-    listElement.innerHTML = '';
-    const filteredData = appState.pendingPallets.filter(it =>
-        it.Cliente.toLowerCase().includes(term)
-    );
-    if (!filteredData.length) {
-        listElement.innerHTML = '<div class="empty">No hay pallets pendientes.</div>';
-        return;
-    }
-    filteredData.forEach(pallet => {
-        const itemNode = $('#tplItem').content.firstElementChild.cloneNode(true);
-        $('.client', itemNode).textContent = pallet.Cliente;
-        $('.cantidad', itemNode).textContent = `Disponible: ${pallet.DisponibleParaTareas}`;
-        const btnGenerar = document.createElement('button');
-        btnGenerar.textContent = "Generar tarea";
-        btnGenerar.className = "primary";
-        btnGenerar.addEventListener('click', () => showTaskGenSection(pallet));
-        itemNode.querySelector('.badge-container')?.appendChild(btnGenerar);
-        listElement.appendChild(itemNode);
-    });
-});
-
-$('#searchTask')?.addEventListener('input', () => {
-    const term = $('#searchTask').value.trim().toLowerCase();
-    const list = $('#taskList');
-    list.innerHTML = '';
-    const filteredTasks = appState.tasks.filter(t =>
-        t.Cliente.toLowerCase().includes(term) || (t.Pasillo && t.Pasillo.toLowerCase().includes(term))
-    );
-    if (!filteredTasks.length) {
-        list.innerHTML = '<div class="empty">No hay tareas pendientes.</div>';
-        return;
-    }
-    filteredTasks.forEach(tarea => {
-        const taskNode = $('#tplTask').content.firstElementChild.cloneNode(true);
-        $('.client', taskNode).textContent = `${tarea.Cliente} (Pasillo: ${tarea.Pasillo})`;
-        $('.cantidad', taskNode).textContent = `Pendiente: ${tarea.CantidadPendienteDescontar}`;
-        list.appendChild(taskNode);
-    });
-});
 
 // --- LÓGICA DE NAVEGACIÓN Y EVENTOS GLOBALES ---
-// almacena la ventana seleccionada en localStorage
-const STORAGE_KEY = 'palletControl_selectedWindow';
 
 // Función para obtener la ventana guardada desde localStorage
 function obtenerVentanaGuardada() {
@@ -917,15 +900,18 @@ document.addEventListener('DOMContentLoaded', () => {
     mostrarVentana(ventanaInicial);
     
     // Cargar datos iniciales
-    fetchStatus();
+    fetchStatus(); // Inicialmente, se carga el acumulado (cuando no hay fecha seleccionada)
     fetchTasks();
     fetchPendientes('pendingList'); // Cargar la lista de la primera ventana
 
-    // Configurar fechas para el filtro de Excel
-    configurarFechasDescarga(); 
+    // Configurar fechas para el filtro de Excel y KPIs
+    configurarFechasFiltro();
 
     // Refrescar datos cada 1 minuto
     setInterval(() => {
+        // Al refrescar, siempre se llama sin fecha si el input está vacío para mostrar acumulado.
+        // Si hay una fecha seleccionada, el listener del input de fecha se encargará de actualizar los KPIs.
+        fetchStatus(fechaInicioInput.value || null); 
         fetchTasks();
         // Solo refrescar la lista activa para no saturar
         const ventanaActiva = obtenerVentanaGuardada();
@@ -934,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (ventanaActiva === 'generar-tarea') {
             fetchPendientes('detailList');
         } else if (ventanaActiva === 'descontar-pallet') {
-            fetchPendientes('detailList');
+            fetchTasks();
         }
     }, 60000);
 });
@@ -947,54 +933,32 @@ document.querySelectorAll('nav button[data-target]').forEach(button => {
     });
 });
 
-// Evento para el botón de descargar Excel
-/*if (descargarExcelBtn) {
-    descargarExcelBtn.addEventListener('click', () => {
-        const fechaInicio = fechaInicioInput.value; 
-        const fechaFin = fechaFinInput.value;     
+// --- FUNCIONES PARA FILTRO DE FECHA EN EL FRONTEND ---
+function configurarFechasFiltro() {
+    const hoy = new Date();
+    const fechaInicioInput = document.getElementById('fechaInicioFiltro'); // Usaremos este input para ambos filtros (KPIs y Excel)
 
-        let url = '/descargar-movimientos';
-        const params = [];
+    // Formatear fecha para input type="date" (YYYY-MM-DD)
+    const formatearFecha = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
-        if (fechaInicio) {
-            params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
-        }
-        if (fechaFin) {
-            params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
-        }
-        
-        if (params.length > 0) {
-            url += `?${params.join('&')}`;
-        }
-        
-        window.location.href = url;
-    });
-}*/
+    // Establecer fecha de hoy por defecto en el input
+    if (fechaInicioInput) {
+        fechaInicioInput.value = formatearFecha(hoy);
+    }
+}
 
-// Evento para el botón de descargar Excel
-// --- DESCARGA DE EXCEL ---
+// --- EVENTOS PARA LOS BOTONES DE FECHA ---
 const descargarExcelBtn = document.getElementById('descargarExcelBtn');
-const btnHoyFechaDescarga = document.getElementById('btnHoyFechaDescarga');
-const fechaInicioInput = document.getElementById('fechaInicio');
-const fechaFinInput = document.getElementById('fechaFin');
+const btnFechaHoy = document.getElementById('btnFechaHoy');
+const btnLimpiarFecha = document.getElementById('btnAcumulado'); // Este es el botón "Acumulado"
+const fechaInicioInput = document.getElementById('fechaInicioFiltro'); // Este es el selector de fecha principal
 
-function parsearInputADate(valor) {
-    const partes = valor.split('/');
-    if (partes.length !== 3) return null;
-    const [dia, mes, anio] = partes.map(Number);
-    const fecha = new Date(anio, mes - 1, dia);
-    if (fecha.getFullYear() !== anio || fecha.getMonth() !== mes - 1 || fecha.getDate() !== dia) return null;
-    return fecha;
-}
-
-function formatearParaInput(fecha) {
-    return `${String(fecha.getDate()).padStart(2,'0')}/${String(fecha.getMonth()+1).padStart(2,'0')}/${fecha.getFullYear()}`;
-}
-
-function formatearParaServidor(fecha) {
-    return fecha.toISOString().split('T')[0];
-}
-
+// Función para descargar Excel
 async function descargarExcel(fechaInicio, fechaFin) {
     let url = '/descargar-movimientos';
     const params = [];
@@ -1004,46 +968,68 @@ async function descargarExcel(fechaInicio, fechaFin) {
 
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Error al descargar el archivo');
+        if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error al descargar: ${errorData.message || response.statusText}`);
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
         const blob = await response.blob();
         const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.xlsx`;
+        const urlBlob = window.URL.createObjectURL(blob);
+        link.href = urlBlob;
+        // Crear un nombre de archivo más dinámico
+        const nombreArchivo = `movimientos_${fechaInicio || 'inicio'}_${fechaFin || 'fin'}.csv`;
+        link.download = nombreArchivo;
         link.click();
-    } catch(e) {
-        console.error('Error al descargar Excel:', e);
-        alert('Error al descargar Excel');
+        window.URL.revokeObjectURL(urlBlob);
+    } catch (error) {
+        console.error("Error en descargarExcel:", error);
+        // El alert ya se mostró si hubo un error específico de fetch
     }
 }
 
+// Evento para el botón de descargar Excel
 if (descargarExcelBtn) {
     descargarExcelBtn.addEventListener('click', () => {
-        const inicio = fechaInicioInput.value;
-        const fin = fechaFinInput.value;
-        descargarExcel(inicio, fin);
+        const fechaInicio = fechaInicioInput.value;
+        // Para la descarga, usaremos la misma fecha para inicio y fin si solo se selecciona una.
+        const fechaFin = fechaInicioInput.value;
+        descargarExcel(fechaInicio, fechaFin);
     });
 }
 
-if (btnHoyFechaDescarga) {
-    btnHoyFechaDescarga.addEventListener('click', () => {
+// Evento para el botón "Hoy"
+if (btnFechaHoy) {
+    btnFechaHoy.addEventListener('click', () => {
         const hoy = new Date();
-        const ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
-        const manana = new Date(); manana.setDate(hoy.getDate() + 1);
-        fechaInicioInput.value = formatearParaInput(ayer);
-        fechaFinInput.value = formatearParaInput(manana);
+        const formatearFecha = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const fechaActual = formatearFecha(hoy);
+        fechaInicioInput.value = fechaActual; // Actualizar el input para que refleje la selección
+        fetchStatus(fechaActual); // Actualizar KPIs para hoy
     });
 }
 
-// --- REFRESCO AUTOMÁTICO DE "descontar-pallet" ---
-function refrescarDatosDescontar() {
-    setInterval(() => {
-        if (obtenerVentanaGuardada() === 'descontar-pallet') {
-            fetchTasks(); // refresca las tareas
-            fetchStatus(); // refresca los KPIs
-        }
-    }, 60000); // cada 1 minuto
+// Evento para el botón "Acumulado"
+if (btnLimpiarFecha) {
+    btnLimpiarFecha.addEventListener('click', () => {
+        fechaInicioInput.value = ''; // Limpiar el input de fecha
+        fetchStatus(); // Volver a cargar los KPIs acumulados
+    });
 }
-refrescarDatosDescontar();
+
+// Evento para el input de fecha para actualizar KPIs
+if (fechaInicioInput) {
+    fechaInicioInput.addEventListener('change', () => {
+        const selectedDate = fechaInicioInput.value;
+        // Si se ha seleccionado una fecha, actualizamos los KPIs. Si está vacío, fetchStatus se encargará del acumulado.
+        fetchStatus(selectedDate || null); 
+    });
+}
 </script>
 </body>
 </html>
