@@ -122,6 +122,20 @@
      transform: translateY(-2px);
      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
  }
+ .ghost {  /* css que maneja los botones hoy ,acumulado ,descargar movimientos*/
+    border: 1px solid #888;
+    background: none;
+    color: #ddc01b;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin: 2px;
+  }
+
+  .ghost.active {
+    background: #333;
+    color: white;
+  }
 </style>
 </head>
 <body>
@@ -356,6 +370,19 @@ function finalizarProceso(taskId) {
   let procesos = getProcesos().filter(id => id !== taskId);
   saveProcesos(procesos);
 }
+const btns = document.querySelectorAll(".ghost");
+
+  // activar "Hoy" apenas carga la app
+  document.getElementById("btnFechaHoy").classList.add("active");
+
+  btns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // sacar "active" a todos
+      btns.forEach(b => b.classList.remove("active"));
+      // marcar el que fue clickeado
+      btn.classList.add("active");
+    });
+  });
 
 
 // --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
