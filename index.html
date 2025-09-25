@@ -122,20 +122,6 @@
      transform: translateY(-2px);
      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
  }
- .ghost2 {  /* css que maneja los botones hoy ,acumulado ,descargar movimientos*/
-    border: 1px solid #888;
-    background: none;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    margin: 2px;
-  }
-
-  .ghost2.active {
-    background: #333;
-    color:#ddc01b;
-  }
 </style>
 </head>
 <body>
@@ -144,7 +130,7 @@
     <div class="kpi">
         <div class="box"><div class="small">Pendientes</div><div id="kpiPend">0</div></div>
         <!-- NUEVO KPI PARA CANCELADOS -->
-        <!--<div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>-->
+        <div class="box"><div class="small">Cancelados</div><div id="kpiCancel">0</div></div>
         <!-- FIN NUEVO KPI -->
         <div class="box"><div class="small">Procesados</div><div id="kpiDone">0</div></div>
         <div class="box"><div class="small">Última acción</div><div id="kpiLast">–</div></div>
@@ -165,11 +151,11 @@
         <input type="date" id="fechaInicioFiltro" style="width: auto; padding: 6px 10px;"/>
         
         <!-- Botones "Hoy" y "Acumulado" -->
-        <button type="button" id="btnFechaHoy" class="ghost2">Hoy</button>
-        <button type="button" id="btnAcumulado" class="ghost2">Acumulado</button>
+        <button type="button" id="btnFechaHoy" class="ghost">Hoy</button>
+        <button type="button" id="btnAcumulado" class="ghost">Acumulado</button>
         
         <!-- Botón de Descarga de Movimientos -->
-        <button id="descargarExcelBtn" class="ghost2">Descargar Movimientos</button>
+        <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
     </div>
     <!-- *** FIN SECCIÓN FILTRO FECHA *** -->
 
@@ -261,7 +247,7 @@
                         </select>
 
                         <button class="primary" type="submit">Continuar</button>
-                        <button type="button" class="ghost" onclick="hideTaskGenSection()">Cancelar</button> <!-- Botón Cancelar -->
+                        <button type="button" class="ghost" onclick="hideTaskGenSection()">Desbloquear</button> <!-- Botón Cancelar -->
                     </form>
                     <div class="small muted" id="taskGenInfo"></div>
                 </div>
@@ -317,7 +303,7 @@
         <!-- Div para alinear los botones -->
         <div class="row" style="gap: 8px;">
             <button class="primary btnTask">Descontar</button>
-            <button type="button" class="ghost warn">Cancelar</button>
+            <button type="button" class="ghost warn">Desbloquear</button>
         </div>
     </div>
 </template>
@@ -370,19 +356,6 @@ function finalizarProceso(taskId) {
   let procesos = getProcesos().filter(id => id !== taskId);
   saveProcesos(procesos);
 }
-const btns = document.querySelectorAll(".ghost2");
-
-  // activar "Hoy" apenas carga la app
-  document.getElementById("btnFechaHoy").classList.add("active");
-
-  btns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      // sacar "active" a todos
-      btns.forEach(b => b.classList.remove("active"));
-      // marcar el que fue clickeado
-      btn.classList.add("active");
-    });
-  });
 
 
 // --- LÓGICA PARA MOSTRAR/OCULTAR VENTANAS ---
@@ -451,13 +424,13 @@ async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como p
         }
         const data = await response.json();
         $('#kpiPend').textContent = data.pendientes;
-        //$('#kpiCancel').textContent = data.cancelados;se comenta para desactivarlo
+        $('#kpiCancel').textContent = data.cancelados;
         $('#kpiDone').textContent = data.descargados;
         $('#kpiLast').textContent = data.lastAction;
     } catch (error) {
         console.error('Error fetching status:', error);
         $('#kpiPend').textContent = 'ERR';
-        //$('#kpiCancel').textContent = 'ERR';se comenta para desactivarlo
+        $('#kpiCancel').textContent = 'ERR';
         $('#kpiDone').textContent = 'ERR';
         $('#kpiLast').textContent = 'ERR';
     }
@@ -664,7 +637,46 @@ function renderTasks() {
                     alert(`Error al desbloquear tarea: ${error.message}`);
                 }
             });
+        }    // **AÑADIR AQUÍ EL NUEVO BOTÓN DE ELIMINAR**
+        const btnEliminar = document.createElement('button');
+        btnEliminar.textContent = 'Eliminar';
+        btnEliminar.className = 'ghost danger'; // Clase para estilo rojo
+        btnEliminar.style.borderColor = 'var(--danger)'; // Borde rojo
+        btnEliminar.style.color = 'var(--danger)'; // Texto rojo
+        btnEliminar.onclick = async () => {
+            if (!confirm(`¿Estás seguro de que deseas ELIMINAR esta tarea ${tarea.ID}? Esta acción no se puede deshacer.`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/tareas-descuento/${tarea.ID}`, { // Ruta DELETE
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || `HTTP error! status: ${response.status}`);
+                }
+
+                alert(`¡Éxito! ${result.message || 'Tarea eliminada.'}`);
+                fetchTasks(); // Refrescar lista
+                fetchPendientes('pendingList'); // Refrescar otras listas
+                fetchPendientes('detailList');
+                fetchStatus(); // Refrescar KPIs
+            } catch (error) {
+                console.error('Error al eliminar tarea:', error);
+                alert(`Error al eliminar tarea: ${error.message}`);
+            }
+        };
+
+        // Añadir el botón de eliminar al contenedor de botones
+        const buttonContainer = taskNode.querySelector('.item > div:last-child');
+        if (buttonContainer) {
+            buttonContainer.appendChild(btnEliminar);
+        } else {
+            console.error("No se encontró el contenedor de botones para añadir el botón Eliminar.");
         }
+
 
         list.appendChild(taskNode);
     });
@@ -927,29 +939,12 @@ document.addEventListener('DOMContentLoaded', () => {
     mostrarVentana(ventanaInicial);
     
     // Cargar datos iniciales
+    fetchStatus(); // Inicialmente, se carga el acumulado (cuando no hay fecha seleccionada)
     fetchTasks();
     fetchPendientes('pendingList'); // Cargar la lista de la primera ventana
 
     // Configurar fechas para el filtro de Excel y KPIs
     configurarFechasFiltro();
-
-    // --- ACTIVAR BOTÓN "HOY" Y PONER FECHA ACTUAL AL INICIO ---
-    if (btnFechaHoy && fechaInicioInput) {
-        const hoy = new Date();
-        const formatearFecha = (date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        const fechaActual = formatearFecha(hoy);
-        fechaInicioInput.value = fechaActual; // poner fecha actual en el input
-        btnFechaHoy.classList.add('active');  // marcar botón como activo
-        fetchStatus(fechaActual);             // actualizar KPIs para hoy
-    } else {
-        // Si por alguna razón no hay input, mostrar acumulado
-        fetchStatus();
-    }
 
     // Refrescar datos cada 1 minuto
     setInterval(() => {
@@ -968,6 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 60000);
 });
+
 // Eventos para los botones de navegación
 document.querySelectorAll('nav button[data-target]').forEach(button => {
     button.addEventListener('click', () => {
