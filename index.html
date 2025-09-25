@@ -169,7 +169,7 @@
         <button type="button" id="btnAcumulado" class="ghost2">Acumulado</button>
         
         <!-- Botón de Descarga de Movimientos -->
-        <button id="descargarExcelBtn" class="ghost">Descargar Movimientos</button>
+        <button id="descargarExcelBtn" class="ghost2">Descargar Movimientos</button>
     </div>
     <!-- *** FIN SECCIÓN FILTRO FECHA *** -->
 
@@ -370,7 +370,7 @@ function finalizarProceso(taskId) {
   let procesos = getProcesos().filter(id => id !== taskId);
   saveProcesos(procesos);
 }
-const btns = document.querySelectorAll(".ghost");
+const btns = document.querySelectorAll(".ghost2");
 
   // activar "Hoy" apenas carga la app
   document.getElementById("btnFechaHoy").classList.add("active");
