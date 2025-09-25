@@ -125,7 +125,7 @@
  .ghost {  /* css que maneja los botones hoy ,acumulado ,descargar movimientos*/
     border: 1px solid #888;
     background: none;
-    color: #ddc01b;
+    color: white;
     padding: 6px 12px;
     border-radius: 6px;
     cursor: pointer;
@@ -134,7 +134,7 @@
 
   .ghost.active {
     background: #333;
-    color: white;
+    color:#ddc01b;
   }
 </style>
 </head>
@@ -1057,6 +1057,7 @@ if (fechaInicioInput) {
         fetchStatus(selectedDate || null); 
     });
 }
+window.addEventListener("DOMContentLoaded", activarHoy);
 </script>
 </body>
 </html>
