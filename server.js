@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql'); // Asegúrate de que mssql esté en package.json
-//require('dotenv').config(); // Asegúrate de descomentar si usas .env
+require('dotenv').config(); // Asegúrate de descomentar si usas .env
 const path = require('path');
 // *** Importación de csv-stringify ***
 const { stringify } = require('csv-stringify');
