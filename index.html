@@ -972,6 +972,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configurar fechas para el filtro de Excel y KPIs
     configurarFechasFiltro();
+    // --- ACTIVAR BOTÓN "HOY" Y PONER FECHA ACTUAL AL INICIO ---
+    if (btnFechaHoy && fechaInicioInput) {
+        const hoy = new Date();
+        const formatearFecha = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const fechaActual = formatearFecha(hoy);
+        fechaInicioInput.value = fechaActual; // poner fecha actual en el input
+        btnFechaHoy.classList.add('active');  // marcar botón como activo
+        fetchStatus(fechaActual);             // actualizar KPIs para hoy
+    } else {
+        // Si por alguna razón no hay input, mostrar acumulado
+        fetchStatus();
+    }
     // Refrescar datos cada 1 minuto
     setInterval(() => {
         // Al refrescar, siempre se llama sin fecha si el input está vacío para mostrar acumulado.
