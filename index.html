@@ -450,7 +450,7 @@ async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como p
     }
 }
 
-async function fetchPendientes(targetListId = 'pendingList') {
+/*async function fetchPendientes(targetListId = 'pendingList') {
     const searchTerm = $('#' + (targetListId === 'detailList' ? 'searchDetail' : 'searchPend')).value;
     try {
         const response = await fetch(`${API_URL}/pendientes?search=${encodeURIComponent(searchTerm)}`);
@@ -463,7 +463,41 @@ async function fetchPendientes(targetListId = 'pendingList') {
         appState.pendingPallets = [];
         renderPendientes(targetListId);
     }
+}*/
+async function fetchStatus(fechaInicio = null) {
+    try {
+        // --- Obtener total general de pendientes ---
+        const responseGeneral = await fetch(`${API_URL}/status`);
+        const dataGeneral = await responseGeneral.json();
+        $('#kpiPend').textContent = dataGeneral.pendientes;
+
+        // --- Obtener otros KPIs según la fecha (si se pasa) ---
+        let url = `${API_URL}/status`;
+        if (fechaInicio) {
+            url += `?fechaInicio=${encodeURIComponent(fechaInicio)}`;
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (errorData.message && errorData.message.includes("Se requiere una fecha")) {
+                console.error("Error al obtener status:", errorData.message);
+                alert(`Error: ${errorData.message}`);
+            } else {
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+        }
+        const data = await response.json();
+        $('#kpiDone').textContent = data.descargados;
+        $('#kpiLast').textContent = data.lastAction;
+
+    } catch (error) {
+        console.error('Error fetching status:', error);
+        $('#kpiPend').textContent = 'ERR';
+        $('#kpiDone').textContent = 'ERR';
+        $('#kpiLast').textContent = 'ERR';
+    }
 }
+
 
 function renderPendientes(targetListId) {
     const listElement = $(`#${targetListId}`);
