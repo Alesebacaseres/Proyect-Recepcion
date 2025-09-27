@@ -418,39 +418,7 @@ function mostrarVentana(idVentana) {
 }
 
 // --- LÓGICA PARA CARGAR DATOS EN TABLAS Y SECCIONES ---
-async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como parámetro opcional
-    let url = `${API_URL}/status`;
-    if (fechaInicio) { // Si hay fecha, la añadimos a la URL
-        url += `?fechaInicio=${encodeURIComponent(fechaInicio)}`;
-    }
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            const errorData = await response.json();
-            // Si el error es de "fecha requerida", mostrar mensaje más específico.
-            if (errorData.message && errorData.message.includes("Se requiere una fecha")) {
-                console.error("Error al obtener status:", errorData.message);
-                alert(`Error: ${errorData.message}`);
-            } else {
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-        }
-        const data = await response.json();
-        $('#kpiPend').textContent = data.pendientes;
-        /*$('#kpiCancel').textContent = data.cancelados;*/
-        $('#kpiDone').textContent = data.descargados;
-        $('#kpiLast').textContent = data.lastAction;
-    } catch (error) {
-        console.error('Error fetching status:', error);
-        $('#kpiPend').textContent = 'ERR';
-        /*$('#kpiCancel').textContent = 'ERR';*/
-        $('#kpiDone').textContent = 'ERR';
-        $('#kpiLast').textContent = 'ERR';
-    }
-}
-
-/*async function fetchPendientes(targetListId = 'pendingList') {
+async function fetchPendientes(targetListId = 'pendingList') {
     const searchTerm = $('#' + (targetListId === 'detailList' ? 'searchDetail' : 'searchPend')).value;
     try {
         const response = await fetch(`${API_URL}/pendientes?search=${encodeURIComponent(searchTerm)}`);
@@ -463,7 +431,7 @@ async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como p
         appState.pendingPallets = [];
         renderPendientes(targetListId);
     }
-}*/
+}
 async function fetchStatus(fechaInicio = null) {
     try {
         // --- Obtener total general de pendientes ---
