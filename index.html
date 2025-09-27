@@ -431,7 +431,49 @@ async function fetchPendientes(targetListId = 'pendingList') {
         appState.pendingPallets = [];
         renderPendientes(targetListId);
     }
-}
+} //comentado para probar el codigo siguiente para pendiente general global sin importar fecha
+/*async function fetchStatus(fechaInicio = null) { // Añadimos fechaInicio como parámetro opcional
+    let url = `${API_URL}/status`;
+
+    // Si hay fecha, la añadimos a la URL
+    if (fechaInicio) {
+        url += `?fechaInicio=${encodeURIComponent(fechaInicio)}`;
+    }
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+
+            // Si el error es de "fecha requerida", mostrar mensaje más específico.
+            if (errorData.message && errorData.message.includes("Se requiere una fecha")) {
+                console.error("Error al obtener status:", errorData.message);
+                alert(`Error: ${errorData.message}`);
+            } else {
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+        }
+
+        const data = await response.json();
+
+        // Actualizamos los KPIs en la página
+        $('#kpiPend').textContent = data.pendientes;
+        /* $('#kpiCancel').textContent = data.cancelados; */
+        /*$('#kpiDone').textContent = data.descargados;
+        $('#kpiLast').textContent = data.lastAction;
+
+    } catch (error) {
+        console.error('Error fetching status:', error);
+
+        // En caso de error, mostrar ERR en los KPIs
+        $('#kpiPend').textContent = 'ERR';
+        /* $('#kpiCancel').textContent = 'ERR'; */
+        /*$('#kpiDone').textContent = 'ERR';
+        $('#kpiLast').textContent = 'ERR';
+    }
+}*/
+
 async function fetchStatus(fechaInicio = null) {
     try {
         // --- Obtener total general de pendientes ---
