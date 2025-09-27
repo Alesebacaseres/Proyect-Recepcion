@@ -923,14 +923,6 @@ $('#formDiscount').addEventListener('submit', async e => {
     } catch (error) {
         console.error('Error al descontar pallet:', error);
         alert(`Error al descontar pallet: ${error.message}`);
-} finally {
-        // refrescar usando la fecha del filtro si existe
-        const fechaSeleccionada = $('#fechaInicioFiltro').value || null;
-
-        fetchTasks(fechaSeleccionada);
-        fetchPendientes('pendingList', fechaSeleccionada);
-        fetchPendientes('detailList', fechaSeleccionada);
-        fetchStatus(fechaSeleccionada);
     }
 });
 // Evento para el formulario de Generar Tarea
