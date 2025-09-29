@@ -45,14 +45,16 @@
      flex-wrap: wrap; /* Permite que los botones pasen a la siguiente línea si no caben */
  }
  .badge.en-proceso-alerta {
-    background: var(--danger); /* Usamos el color rojo definido en tus variables CSS */
-    color: var(--text); /* O el color de texto que mejor contraste */
-    border-color: rgba(255, 255, 255, 0.1); /* Un borde sutil */
-}
-
-/* Si quieres que el texto dentro del badge también sea rojo */
-.badge.en-proceso-alerta span {
-    color: var(--danger);
+    display: block;          /* Aparece en línea separada, debajo del detalle */
+    margin-top: 4px;         /* Separación del detalle */
+    background: var(--danger); 
+    color: var(--text); 
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    word-break: break-word;  /* Texto largo se ajusta */
+    max-width: 100%;         /* No sobresalga del contenedor */
 }
  .badge-container { /* Contenedor específico para badges y botones */
      display: flex;
