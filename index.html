@@ -861,7 +861,7 @@ $('#formAdd').addEventListener('submit', async e => {
         $('#formAdd').reset();
         fetchPendientes('pendingList');
         fetchPendientes('detailList');
-        fetchStatus();
+        /*fetchStatus();*/
     } catch (error) {
         console.error('Error al agregar pallet:', error);
         alert(`Error al cargar pallet: ${error.message}`);
@@ -921,7 +921,7 @@ $('#formDiscount').addEventListener('submit', async e => {
         fetchTasks();
         fetchPendientes('pendingList');
         fetchPendientes('detailList');
-        fetchStatus();
+        /*fetchStatus();*/
     } catch (error) {
         console.error('Error al descontar pallet:', error);
         alert(`Error al descontar pallet: ${error.message}`);
@@ -983,7 +983,7 @@ $('#formTaskGen').addEventListener('submit', async e => {
         fetchPendientes('pendingList');
         fetchPendientes('detailList');
         fetchTasks();
-        fetchStatus();
+        /*fetchStatus();*/
     } catch (error) {
         console.error('Error al generar tarea:', error);
         alert(`Error al generar tarea: ${error.message}`);
